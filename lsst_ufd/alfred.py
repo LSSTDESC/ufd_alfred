@@ -2,6 +2,7 @@ import yaml
 import os
 from lsst.daf.butler import Butler
 from star_gal_sep import *
+from sg_diagnostic_plots import *
 #-----------------------------------
 
 #this is a bit hard coded too but idk another work around
@@ -34,7 +35,7 @@ INCOLS = [
     'coord_dec',
     'detect_isIsolated',
 ]
-bands="griz"
+bands='griz'
 for band in bands:
     INCOLS += [
         f'{band}_psfFlux',
@@ -52,10 +53,19 @@ for band in bands:
 data = butler.get('object', collections=[collection],
                   dataId={'skymap': skymap, 'tract': 
                           field2tract_dict['EDFS'][0]}, 
-                  parameters={"columns":INCOLS})
+                  parameters={'columns':INCOLS})
 # just calling up one tract for now
 # thank you alfred
 
 #data = Data(survey, data_arr) 
 
 stars = stellar_catalog(data, survey, 'fluxratioerr', 'i', 0.5, c=1.2)
+
+color_magnitude(stars,
+                'g', 'r', stars['i_extendedness'], 'i_extendedness',
+                "Test Plot", save = True, plots_path = plots_dir)
+color_magnitude2(stars,
+                 {'band1' : 'g', 'band2' : 'r', 'colors' : stars['i_extendedness'], 'color_label' : 'i_extendedness', 'title' : 'i_extendedness'},
+                 {'band1' : 'g', 'band2' : 'r', 'colors' : stars['g_extendedness'], 'color_label' : 'g_extendedness', 'title' : 'g_extendedness'},
+                 title = "Test Plot 2", save = True, plots_path = plots_dir)
+
