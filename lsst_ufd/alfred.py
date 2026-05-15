@@ -1,6 +1,7 @@
 import yaml
 import os
 from lsst.daf.butler import Butler
+from star_gal_sep import *
 #-----------------------------------
 
 #this is a bit hard coded too but idk another work around
@@ -43,15 +44,18 @@ for band in bands:
         f'{band}_extendedness',
         f'{band}_psfFlux_flag'
     ]
-    if survey=='dp1':
-        INCOLS += [f'{band}_SizeExtendedness']
-    elif survey=='dp2':
+    #if survey=='dp1':
+    #    INCOLS += [f'{band}_SizeExtendedness']
+    if survey=='dp2':
         INCOLS += [f'{band}_model_extendedness']
-#maybe inelegant but that's a problem for future kayleigh
-data_arr = butler.get('object', dataId={'skymap': skymap, 'tract': field2tract_dict['EDFS'][0]}, collections=[collection], parameters={"columns":INCOLS})
+# maybe inelegant but that's a problem for future kayleigh
+data = butler.get('object', collections=[collection],
+                  dataId={'skymap': skymap, 'tract': 
+                          field2tract_dict['EDFS'][0]}, 
+                  parameters={"columns":INCOLS})
+# just calling up one tract for now
+# thank you alfred
 
-data = Data(survey, data_arr) 
-#just calling up one tract for now
-#thank you alfred
+#data = Data(survey, data_arr) 
 
-stars = data.star_filter('i_fluxratioerr', 0.5, [data_arr['i_psfFlux'], data_arr['i_cModelFlux'], data_arr['i_cModelFluxErr'], data_arr['i_psfFluxErr']]) #check if i wrote the function to be > < the threshold
+stars = stellar_catalog(data, survey, 'fluxratioerr', 'i', 0.5, c=1.2)
