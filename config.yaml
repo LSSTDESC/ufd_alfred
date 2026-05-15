@@ -45,7 +45,7 @@ dp1:
                       'Seagull' : [7611, 7610, 7850],
                       'Rubin_SV_38_7' : [10463, 10464, 10704]
                       }
-  star_gal_sep_fn : 'dp1_fluxratioerr' #can change but for now gonna make a file called this and import the function 
 
 dp2:
- instrument : 'LSSTCam' 
+  instrument : 'LSSTCam'
+
