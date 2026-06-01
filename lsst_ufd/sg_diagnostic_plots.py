@@ -154,81 +154,21 @@ def color_color(star_df, band_x1, band_x2, band_y1, band_y2, colors, color_label
     if save == True:
         plt.savefig(plots_path + f'colorcolor_{title.replace(' ', '').lower()}.png')
 
-def color_colorN(star_df, plt_dict_list, title = None, save = False, plots_path = None):
-    """
 
-    """
-    
-    N = len(plt_dict_list)
-    fig, axes = plt.subplots(1,N, figsize = (9*N,7))
-    axes = axes.flatten()
-
-    for i, ax in enumerate(axes):
-        plt_dict = plt_dict_list[i]
-        color_color(star_df,
-                    plt_dict['band_x1'], plt_dict['band_x2'],
-                    plt_dict['band_y1'], plt_dict['band_y2'],
-                    plt_dict['colors'], plt_dict['color_label'],
-                    plt_dict['title'], ax = ax)
-
-    if title is not None:
-        fig.suptitle(title)
-
-    plt.tight_layout()
-    if save == True:
-        plt.savefig(plots_path + f'/colormag_{title.replace(' ', '').lower()}.png')
-
-def color_color_gradient(star_df, plt_dict, title = None, save = False, plots_path = None):
-    """
-plt_dict['band_x1'], plt_dict['band_x2'],
-                    plt_dict['band_y1'], plt_dict['band_y2'],
-                    plt_dict['colors'], plt_dict['color_label'],
-                    plt_dict['title']
-    """
-
-    band_x1 = plt_dict['band_x1']
-    band_x2 = plt_dict['band_x2']
-    band_y1 = plt_dict['band_y1']
-    band_y2 = plt_dict['band_y2']
-### NEEDS TO BE FINISHED!!!!!! 
-    bright = {'band_x1' : [], 'band_x2' : [], 'band_y1' : [], 'band_y2' : []
-              'colors' : [],}
-    middle = {"r mag" : [], "g mag" : [], "i mag" : [], "ext" : []}
-    dim = {"r mag" : [], "g mag" : [], "i mag" : [], "ext" : []}
-
-    for i in range(len(r_mag)):
-        r_i = r_mag[i]
-        if (r_i > 18) and (r_i < 22):
-            bright["r mag"].append(r_i)
-            bright["g mag"].append(g_mag[i])
-            bright["i mag"].append(i_mag[i])
-            bright["ext"].append(euc_colors.to_list()[i])
-        elif (r_i > 22) and (r_i < 24):
-            middle["r mag"].append(r_i)
-            middle["g mag"].append(g_mag[i])
-            middle["i mag"].append(i_mag[i])
-            middle["ext"].append(euc_colors.to_list()[i])
-        else:
-            dim["r mag"].append(r_i)
-            dim["g mag"].append(g_mag[i])
-            dim["i mag"].append(i_mag[i])
-            dim["ext"].append(euc_colors.to_list()[i])
-
-    color_colorN(star_df, plt_dict_list, title = None, save = False, plots_path = None)
-
-
-def star_gal_sep(merged_df, colors1, label1, colors2, label2, surveyname, y_bounds, save = False, add_lines = False, file_num = ''):
+def star_gal_sep(df, survey_sep, colors, color_label, title, ax = None, y_bounds=(-0.2, 1.0),  save = False, plots_path = ''):
     '''
-    Plots color-color, r-i vs g-r for different magnitudes
-    Expected that star_df would be sorted from an LSST-based stellar classifier
-    Point of this plot is to show how LSST's classification changes as sources get fainter
-
+    Plots the difference between PSF and cModel flux across magnitudes
+    color-coded by star-galaxy classifiers
+    Shows magnitude where things start getting confused
+    
     Parameters
     ----------
-    merged_df : pandas dataframe
-        Dataframe of all sources
-    colors1 : dataframe column
-        Data to be used for subplot 1 colorbar
+    df : astropy table
+        Table of all sources
+    survey_sep : string
+        Survey used for the separation, determines the y-axis
+    colors : table column, potentially a 
+        Data to be used for colorbar
     label1 : string
         Subplot 1 colorbar label
         If label1 and label2 are to be different,
@@ -254,26 +194,95 @@ def star_gal_sep(merged_df, colors1, label1, colors2, label2, surveyname, y_boun
     -------
     Pretty plot
     '''
+    if ax == None:
+        fig, axes = plt.subplots(1,1, figsize=(9,7))
+        ax = axes
 
-    fig, ax = plt.subplots(1,2, figsize=(18,6))
+    i_mag = flux2mag(df['i_psfFlux'])
+    if survey_sep == 'Euclid':
+        y = df['MUMAX_MINUS_MAG']
+        y_label = 'Euclid mu_max - mag'
+    else:
+        i_mag_cmodel = flux2mag(df["i_cModelFlux"].values)
+        y = i_mag - i_mag_cmodel
+        y_label = f'{survey_sep} i_psfFlux - i_cModelFlux'
 
-    i_mag = flux2mag(merged_df["i_psfFlux"].values)
-    i_mag_cmodel = flux2mag(merged_df["i_cModelFlux"].values)
+    _ = ax.scatter(i_mag, y,
+                   c = colors,
+                   s = 10, cmap = "viridis_r")
+    ax.set(title = title, xlabel = 'LSST i_psfFlux', ylabel = y_label, ylim = y_bounds)
+    plt.colorbar(_,label = color_label)
+    plt.tight_layout()
+    
+    if save == True:
+        plt.savefig(plots_path + f'stargalsep_{title.replace(' ', '').lower()}.png')
 
-    _=ax[0].scatter(i_mag,
-                i_mag - i_mag_cmodel,
-                c = colors1,
-                s = 10, cmap = "viridis_r")
-    ax[0].set(xlabel = f'{surveyname} i_psfFlux', ylabel = f'{surveyname} i psf - cmodel mag', ylim = y_bounds)
-    plt.colorbar(_,label = label1)
-    _=ax[1].scatter(i_mag,
-                merged_df['MUMAX_MINUS_MAG'],
-                c = colors2,
-                s = 10, cmap = 'viridis_r')
-    plt.colorbar(_,label = label2)
-    ax[1].set(xlabel = f'{surveyname} i_psfFlux', ylabel = "Euclid mu_max - mag")
-    if add_lines == True:
-        ax[1].plot(i_mag, (-0.07*i_mag)-1.2, label = "Cutoff Attempt")
+
+"""
+def color_colorN(star_df, plt_dict_list, title = None, save = False, plots_path = None):
+    
+
+
+    
+    N = len(plt_dict_list)
+    fig, axes = plt.subplots(1,N, figsize = (9*N,7))
+    axes = axes.flatten()
+
+    for i, ax in enumerate(axes):
+        plt_dict = plt_dict_list[i]
+        color_color(star_df,
+                    plt_dict['band_x1'], plt_dict['band_x2'],
+                    plt_dict['band_y1'], plt_dict['band_y2'],
+                    plt_dict['colors'], plt_dict['color_label'],
+                    plt_dict['title'], ax = ax)
+
+    if title is not None:
+        fig.suptitle(title)
+
     plt.tight_layout()
     if save == True:
-        plt.savefig(my_plotspath + f'star-gal-sep_{label1}_selector_{file_num}.png')
+        plt.savefig(plots_path + f'/colormag_{title.replace(' ', '').lower()}.png')
+"""
+"""
+def color_color_gradient(star_df, plt_dict, title = None, save = False, plots_path = None):
+    ###
+#plt_dict['band_x1'], plt_dict['band_x2'],
+#                    plt_dict['band_y1'], plt_dict['band_y2'],
+#                    plt_dict['colors'], plt_dict['color_label'],
+#                    plt_dict['title']
+
+    band_x1 = plt_dict['band_x1']
+    band_x2 = plt_dict['band_x2']
+    band_y1 = plt_dict['band_y1']
+    band_y2 = plt_dict['band_y2']
+### NEEDS TO BE FINISHED!!!!!! 
+    bright = {'band_x1' : [], 'band_x2' : [], 'band_y1' : [], 'band_y2' : []
+              'colors' : [], 'color_label' : plt_dict['color_label'], 'title' }
+    middle = {'band_x1' : [], 'band_x2' : [], 'band_y1' : [], 'band_y2' : []
+              'colors' : [],}
+    dim = {'band_x1' : [], 'band_x2' : [], 'band_y1' : [], 'band_y2' : []
+              'colors' : [],}
+    for i in range(len(band_x1)):
+        mag_i = band_x1[i]
+        if (mag_i > 18) and (mag_i < 22):
+            bright['band_x1'].append(mag_i)
+            bright['band_x2'].append(band_x2[i])
+            bright['band_y1'].append(band_y1[i])
+            bright['band_y2'].append(band_y2[i])
+            bright['colors'].append(plt_dict['colors'][i])
+        elif (mag_i > 22) and (mag_i < 24):
+            middle['band_x1'].append(mag_i)
+            middle['band_x2'].append(band_x2[i])
+            middle['band_y1'].append(band_y1[i])
+            middle['band_y2'].append(band_y2[i])
+            middle['colors'].append(plt_dict['colors'][i])
+        else:
+            dim['band_x1'].append(mag_i)
+            dim['band_x2'].append(band_x2[i])
+            dim['band_y1'].append(band_y1[i])
+            dim['band_y2'].append(band_y2[i])
+            dim['colors'].append(plt_dict['colors'][i])
+
+    color_colorN(star_df, [bright, middle, dim], title = None, save = False, plots_path = None)
+"""
+
