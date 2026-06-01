@@ -45,8 +45,9 @@ for band in bands:
         f'{band}_extendedness',
         f'{band}_psfFlux_flag'
     ]
-    #if survey=='dp1':
-    #    INCOLS += [f'{band}_SizeExtendedness']
+    if survey=='dp1':
+        INCOLS += [f'{band}_sizeExtendedness']
+        INCOLS += [f'{band}_sizeExtendedness_flag']
     if survey=='dp2':
         INCOLS += [f'{band}_model_extendedness']
 # maybe inelegant but that's a problem for future kayleigh
@@ -57,15 +58,19 @@ data = butler.get('object', collections=[collection],
 # just calling up one tract for now
 # thank you alfred
 
-#data = Data(survey, data_arr) 
+#data = Data(survey, data_arr) <- remnant from me thinking about OOP 
 
 stars = stellar_catalog(data, survey, 'fluxratioerr', 'i', 0.5, c=1.2)
 
+#call up diagnostic plots
 color_magnitude(stars,
-                'g', 'r', stars['i_extendedness'], 'i_extendedness',
+                'g', 'r', stars['i_sizeExtendedness'], 'i_sizeExtendedness',
                 "Test Plot", save = True, plots_path = plots_dir)
 color_magnitude2(stars,
-                 {'band1' : 'g', 'band2' : 'r', 'colors' : stars['i_extendedness'], 'color_label' : 'i_extendedness', 'title' : 'i_extendedness'},
-                 {'band1' : 'g', 'band2' : 'r', 'colors' : stars['g_extendedness'], 'color_label' : 'g_extendedness', 'title' : 'g_extendedness'},
+                 {'band1' : 'g', 'band2' : 'r', 'colors' : stars['i_sizeExtendedness'], 
+                  'color_label' : 'i_sizeExtendedness', 'title' : 'i_sizeExtendedness'},
+                 {'band1' : 'g', 'band2' : 'r', 'colors' : stars['g_sizeExtendedness'], 
+                  'color_label' : 'g_sizeExtendedness', 'title' : 'g_sizeExtendedness'},
                  title = "Test Plot 2", save = True, plots_path = plots_dir)
-
+color_color(stars,'g','r','r','i', stars['i_sizeExtendedness'], 'i_sizeExtendedness', 'ColorColor Test')
+star_gal_sep(data, 'LSST', data['i_sizeExtendedness'], 'i_sizeExtendedness', 'DP2 SG Sep')

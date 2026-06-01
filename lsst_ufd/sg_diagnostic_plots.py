@@ -85,7 +85,7 @@ def color_magnitude2(star_df, pltL_dict, pltR_dict, title = None, save = False, 
 
     fig, axes = plt.subplots(1,2, figsize = (18,7))
     axes = axes.flatten()
-    dict_list = [pltA_dict, pltB_dict]
+    dict_list = [pltL_dict, pltR_dict]
     
     for i, ax in enumerate(axes):
         color_magnitude(star_df, 
@@ -155,7 +155,7 @@ def color_color(star_df, band_x1, band_x2, band_y1, band_y2, colors, color_label
         plt.savefig(plots_path + f'colorcolor_{title.replace(' ', '').lower()}.png')
 
 
-def star_gal_sep(df, survey_sep, colors, color_label, title, ax = None, y_bounds=(-0.2, 1.0),  save = False, plots_path = ''):
+def star_gal_sep(df, survey_sep, colors, color_label, title, ax = None, y_bounds=(-0.2, 1.0), save = False, plots_path = ''):
     '''
     Plots the difference between PSF and cModel flux across magnitudes
     color-coded by star-galaxy classifiers
@@ -169,26 +169,20 @@ def star_gal_sep(df, survey_sep, colors, color_label, title, ax = None, y_bounds
         Survey used for the separation, determines the y-axis
     colors : table column, potentially a 
         Data to be used for colorbar
-    label1 : string
-        Subplot 1 colorbar label
-        If label1 and label2 are to be different,
-        label 1 should be the one for which you want the file named
-    colors2 : dataframe column
-        Data to be used for subplot 2 colorbar
-    label2 : string
-        Subplot 2 colorbar label
-    surveyname : string
-        Survey from which i band photometry is being pulled
-        (where merged_df is getting its i_psfFlux and i_cModelFlux)
-    y_bounds : tuple of floats
-        Argument for subplot 1's ylim
-        Found it necessary to zoom and enhance on LSST selector
+    color_label : string
+        Colorbar label
+    title : string
+        Plot title
+    ax (optional) : default None, else plt axes object
+        Axes to plot subplots on
+        If none, will set subplot axes (1,1)
+    y_bounds (optional) : tuple of floats
+        Argument for y limits
+        Found it necessary sometimes to zoom and enhance on LSST selector
     save (optional) : default False
         If True the file will be saved
-    file_num (optional) : default ''
-        You can optionally add a number if you don't want to overwrite
-        the file previously saved with same name
-        (file titles have form 'star-gal-sep_{label1}_selector_{file_num}')
+    plots_path (optional) : default empty string
+        Where to save
 
     Returns
     -------
@@ -203,7 +197,7 @@ def star_gal_sep(df, survey_sep, colors, color_label, title, ax = None, y_bounds
         y = df['MUMAX_MINUS_MAG']
         y_label = 'Euclid mu_max - mag'
     else:
-        i_mag_cmodel = flux2mag(df["i_cModelFlux"].values)
+        i_mag_cmodel = flux2mag(df["i_cModelFlux"])
         y = i_mag - i_mag_cmodel
         y_label = f'{survey_sep} i_psfFlux - i_cModelFlux'
 
