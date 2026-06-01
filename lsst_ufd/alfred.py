@@ -62,7 +62,7 @@ data = butler.get('object', collections=[collection],
 data = quality_mask(data, snr=5)
 
 #separate stars from galaxies
-stars = stellar_catalog(data, survey, 'fluxratioerr', 'i', 0.5, c=1.2)
+stars = stellar_catalog(data, survey, 'fluxratioerr', 'i', 0.3, c=1.2)
 
 #call up diagnostic plots
 color_magnitude(stars,
