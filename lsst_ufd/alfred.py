@@ -58,20 +58,22 @@ data = butler.get('object', collections=[collection],
 # just calling up one tract for now
 # thank you alfred
 
-#data = Data(survey, data_arr) <- remnant from me thinking about OOP 
+#clean up data
+data = quality_mask(data, snr=5)
 
+#separate stars from galaxies
 stars = stellar_catalog(data, survey, 'fluxratioerr', 'i', 0.5, c=1.2)
 
 #call up diagnostic plots
 color_magnitude(stars,
                 'g', 'r', stars['i_sizeExtendedness'], 'i_sizeExtendedness',
-                "Test Plot", save = True, plots_path = plots_dir)
+                'Test Plot', save = True, plots_path = plots_dir)
 color_magnitude2(stars,
                  {'band1' : 'g', 'band2' : 'r', 'colors' : stars['i_sizeExtendedness'], 
                   'color_label' : 'i_sizeExtendedness', 'title' : 'i_sizeExtendedness'},
                  {'band1' : 'g', 'band2' : 'r', 'colors' : stars['g_sizeExtendedness'], 
                   'color_label' : 'g_sizeExtendedness', 'title' : 'g_sizeExtendedness'},
-                 title = "Test Plot 2", save = True, plots_path = plots_dir)
+                 title = 'Test Plot 2', save = True, plots_path = plots_dir)
 color_color(stars,'g','r','r','i', stars['i_sizeExtendedness'], 'i_sizeExtendedness',
             'ColorColor Test', save = True, plots_path = plots_dir)
 star_gal_sep(data, 'LSST', data['i_sizeExtendedness'], 'i_sizeExtendedness',
