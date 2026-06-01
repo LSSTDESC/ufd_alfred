@@ -6,7 +6,7 @@ def flux2mag(flux):
 
 def quality_mask(data, snr):
     mask = (data['detect_isIsolated'] == True)
-    mask &= (data['r_psfFlux']/data['r_psfFluxErr']) > snr
+    mask &= (data['r_psfFlux']/data['r_psfFluxErr'] > snr)
     for band in 'griz':
         mask &= (data[f'{band}_psfFlux_flag'] == 0)
         mask &= (data[f'{band}_sizeExtendedness_flag'] == 0)

@@ -77,4 +77,4 @@ color_magnitude2(stars,
 color_color(stars,'g','r','r','i', stars['i_sizeExtendedness'], 'i_sizeExtendedness',
             'ColorColor Test', save = True, plots_path = plots_dir)
 star_gal_sep(data, 'LSST', data['i_sizeExtendedness'], 'i_sizeExtendedness',
-             'DP2 SG Sep', save = True, plots_path = plots_dir)
+             'DP1 SG Sep', save = True, plots_path = plots_dir)
