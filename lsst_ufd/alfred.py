@@ -72,5 +72,7 @@ color_magnitude2(stars,
                  {'band1' : 'g', 'band2' : 'r', 'colors' : stars['g_sizeExtendedness'], 
                   'color_label' : 'g_sizeExtendedness', 'title' : 'g_sizeExtendedness'},
                  title = "Test Plot 2", save = True, plots_path = plots_dir)
-color_color(stars,'g','r','r','i', stars['i_sizeExtendedness'], 'i_sizeExtendedness', 'ColorColor Test')
-star_gal_sep(data, 'LSST', data['i_sizeExtendedness'], 'i_sizeExtendedness', 'DP2 SG Sep')
+color_color(stars,'g','r','r','i', stars['i_sizeExtendedness'], 'i_sizeExtendedness',
+            'ColorColor Test', save = True, plots_path = plots_dir)
+star_gal_sep(data, 'LSST', data['i_sizeExtendedness'], 'i_sizeExtendedness',
+             'DP2 SG Sep', save = True, plots_path = plots_dir)
