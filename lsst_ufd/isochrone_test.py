@@ -19,8 +19,9 @@ iso = isochrone.Isochrone(
         survey= survey.lower(),
         band_1= bands[0],
         band_2= bands[1])
-
+fig, ax = plt.subplots(1,1, figsize=(6,6))
 index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
-plt.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus)
-plt.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus)
+ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
+ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus)
+ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus)
 plt.savefig('/global/u2/k/kexcell/ultrafaints/plots/iso_test.png')
