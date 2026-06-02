@@ -2,7 +2,8 @@ import numpy as np
 
 def flux2mag(flux):
     zeropoint = 31.4 # AB zero-point"
-    return -2.5*np.log10(flux) + zeropoint
+    mag = -2.5*np.log10(flux) + zeropoint
+    return mag.filled(np.nan)
 
 def quality_mask(data, snr):
     mask = (data['detect_isIsolated'] == True)

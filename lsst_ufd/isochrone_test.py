@@ -5,6 +5,7 @@ import simple_adl.simple_adl.coordinate_tools as coordinate_tools
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.table import Table
+import scipy
 
 def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.1, return_all=False):
     """
@@ -34,20 +35,22 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.1, return_all=Fal
     cut_1 = (color_diff < np.sqrt(0.1**2 + r_err**2 + g_err**2))
 
     cut = np.logical_or(cut_1, cut_2)
-
+    
+    mag_max = 28 #??? idk
     #mag_bins = np.arange(17., 24.1, 0.1)
     mag_bins = np.arange(17., mag_max+0.1, 0.1)
     mag_centers = 0.5 * (mag_bins[1:] + mag_bins[0:-1])
     magerr = np.tile(0., len(mag_centers))
+    
     for ii in range(0, len(mag_bins) - 1):
         cut_mag_bin = (g > mag_bins[ii]) & (g < mag_bins[ii + 1])
         magerr[ii] = np.median(np.sqrt(0.1**2 + r_err[cut_mag_bin]**2 + g_err[cut_mag_bin]**2))
-
     if return_all:
         return cut, mag_centers[f_isochrone(mag_centers) < 100], (f_isochrone(mag_centers) + magerr)[f_isochrone(mag_centers) < 100], (f_isochrone(mag_centers) - magerr)[f_isochrone(mag_centers) < 100]
     else:
         return cut
 
+'''
 distance = 300 # kpc
 #distance_modulus = ugali.utils.projector.distanceToDistanceModulus(distance)
 distance_modulus = coordinate_tools.distanceToDistanceModulus(distance)
@@ -73,8 +76,8 @@ data['r'] = R
 data['g_err'] = np.linspace(0,0,50)
 data['r_err'] = np.linspace(0,0,50)
 
-#cut = search.cut_isochrone_path()
-#data = data[cut]
+cut = cut_isochrone_path(data['g'], data['r'], data['g_err'], data['r_err'], iso, radius=0.1, return_all=False)
+data = data[cut]
 
 fig, ax = plt.subplots(1,1, figsize=(6,6))
 index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
@@ -84,3 +87,4 @@ ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modu
 ax.plot(data['g']-data['r'], data['g'], marker = 'o')
 
 plt.savefig('/global/u2/k/kexcell/ultrafaints/plots/iso_test.png')
+'''
