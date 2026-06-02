@@ -153,6 +153,7 @@ def color_color(star_df, band_x1, band_x2, band_y1, band_y2, colors, color_label
     plt.tight_layout()
     if save == True:
         plt.savefig(plots_path + f'/colorcolor_{title.replace(' ', '').lower()}.png')
+        print(plots_path + f'/colorcolor_{title.replace(' ', '').lower()}.png')
 
 
 def star_gal_sep(df, survey_sep, colors, color_label, title, ax = None, y_bounds=(-0.2, 1.0), save = False, plots_path = ''):
