@@ -100,14 +100,15 @@ r = flux2mag(data['r_psfFlux'])
 g_err = flux2mag(data['g_psfFluxErr'])
 r_err = flux2mag(data['r_psfFluxErr'])
 cut = cut_isochrone_path(g, r, g_err, r_err, iso)
-data = data[cut]
+isocut_data = data[cut]
 
 fig, ax = plt.subplots(1,1, figsize=(6,6))
 index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
 ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
 ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus)
 ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus)
-ax.plot(flux2mag(data['g_psfFlux'])-flux2mag(data['r_psfFlux']), flux2mag(data['g_psfFlux']), marker = 'o')
+ax.scatter(flux2mag(isocut_data['g_psfFlux']) - flux2mag(isocut_data['r_psfFlux']), 
+           flux2mag(isocut_data['g_psfFlux']))
 
 plt.savefig(plots_dir + '/iso_test.png')
 
