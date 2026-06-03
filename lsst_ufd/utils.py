@@ -2,8 +2,12 @@ import numpy as np
 
 def flux2mag(flux):
     zeropoint = 31.4 # AB zero-point"
-    mag = -2.5*np.log10(flux) + zeropoint
-    return mag.filled(np.nan)
+    flux = np.asarray(flux, dtype=float)  # handles masked arrays and lists
+    with np.errstate(divide='ignore', invalid='ignore'):
+        mag = -2.5 * np.log10(flux) + zeropoint
+    mag[~np.isfinite(mag)] = np.nan  # catches inf and nan from log10(<=0)
+    return mag
+
 
 def quality_mask(data, snr):
     mask = (data['detect_isIsolated'] == True)

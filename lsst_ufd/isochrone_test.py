@@ -36,7 +36,7 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.1, return_all=Fal
 
     cut = np.logical_or(cut_1, cut_2)
     
-    mag_max = 28 #??? idk
+    mag_max = 24 #??? idk
     #mag_bins = np.arange(17., 24.1, 0.1)
     mag_bins = np.arange(17., mag_max+0.1, 0.1)
     mag_centers = 0.5 * (mag_bins[1:] + mag_bins[0:-1])

@@ -111,4 +111,4 @@ ax.scatter(flux2mag(isocut_data['g_psfFlux']) - flux2mag(isocut_data['r_psfFlux'
            flux2mag(isocut_data['g_psfFlux']))
 
 plt.savefig(plots_dir + '/iso_test.png')
-
+print(plots_dir + '/iso_test.png')
