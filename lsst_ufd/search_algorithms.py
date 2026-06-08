@@ -50,7 +50,7 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.1, return_all=Fal
     else:
         return cut
 
-def isochrone_search(star_data, distance, age=12.0, Z=0.0002, plots_dir):
+def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True, plots_dir=''):
   #distance in kpc
   distance_modulus = coordinate_tools.distanceToDistanceModulus(distance)
   
@@ -70,13 +70,17 @@ def isochrone_search(star_data, distance, age=12.0, Z=0.0002, plots_dir):
   
   cut = cut_isochrone_path(star_data['g mag'], star_data['r mag'], star_data['g mag err'], star_data['r mag err'], iso)
   star_data = star_data[cut]
+ 
+  if graph==True: 
+    fig, ax = plt.subplots(1,1, figsize=(6,6))
+    index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
+    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
+    ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
+    ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
+    ax.scatter(data['g mag'] - data['r mag'], 
+             data['g mag'], c='b')
   
-  fig, ax = plt.subplots(1,1, figsize=(6,6))
-  index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
-  ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
-  ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus)
-  ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus)
-  ax.scatter(data['g mag'] - data['r mag'], 
-             data['g mag'])
+    plt.savefig(plots_dir + '/iso_test.png')
+
   
-  plt.savefig(plots_dir + '/iso_test.png')
+
