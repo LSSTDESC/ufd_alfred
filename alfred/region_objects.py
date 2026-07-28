@@ -5,24 +5,26 @@ class Tract():
         SkyMap = skyMap object, generated from butler
         '''
         self.tract = tract
-        self.center = SkyCoord(SkyMap.generateTract(tract).getCtrCoord().getRa().asDegrees()*u.degrees, 
-                               SkyMap.generateTract(tract).getCtrCoord().getDec().asDegrees()*u.degrees)
-        self.center_Angle = SkyMap.generateTract(tract).getCtrCoord()
-        corners = []
-        for i in range(4):
-            corners.append(SkyMap.getRaDecRange(tract)[i].asDegrees())
-        self.corners_deg = corners
+        self.center = SkyCoord(SkyMap.generateTract(tract).getCtrCoord().getRa().asDegrees()*u.deg, 
+                               SkyMap.generateTract(tract).getCtrCoord().getDec().asDegrees()*u.deg, 
+                               frame='icrs')
+        self.center_SpherePoint = SkyMap.generateTract(tract).getCtrCoord()
+        ras = [SkyMap.getRaDecRange(tract)[0].asDegrees()*u.deg, SkyMap.getRaDecRange(tract)[1].asDegrees()*u.deg]
+        self.ra_range = ras
+        decs = [SkyMap.getRaDecRange(tract)[2].asDegrees()*u.deg, SkyMap.getRaDecRange(tract)[3].asDegrees()*u.deg]
+        self.dec_range = decs
+        corners = [SkyCoord(ra,dec,frame='icrs') for ra in ras for dec in decs]
+        self.corners = corners
         self.corners_Angle = SkyMap.getRaDecRange(tract)
 
     def rubin_query(self):
         full_tract = butler.get('object', 
                                 dataId={'skymap': skymap, 'tract': tract}, 
                                 collections=dp2_collection, parameters={"columns":INCOLS})
-        patch_restrict = full_tract[full_tract['patch']==patch]
-        del full_tract
-        gc.collect()
-        return patch_restrict
+        return full_tract
 
+## CURRENTLY TRYING AND FAILING TO GET THE EUCLID QUERY WORKING
+"""
     def euclid_query(self):
         '''
         returns results Table of a 1.7 deg circle around the center of tract coord 
@@ -41,11 +43,11 @@ class Tract():
             results_table = Table.read(str(file_path))
         else:
             print('File not found. Querying now')
-            query = """
+            query = '''
                     SELECT right_ascension, declination, point_like_prob, point_like_flag,
                     ellipticity, mumax_minus_mag, flux_vis_psf, fluxerr_vis_psf, spurious_flag,
                     det_quality_flag, fwhm, segmentation_map_id
-                    """
+                    '''
             num = 2
             for band in ['VIS', 'Y', 'J', 'H']:
                 query += f", FLAG_{band}, FLUX_{band}_{num}FWHM_APER, FLUXERR_{band}_{num}FWHM_APER".lower()
@@ -74,3 +76,4 @@ class Tract():
         #look at this https://pipelines.lsst.io/py-api/lsst.analysis.tools.actions.plot.PerTractPropertyMapPlot.html
 
         return rubin_healsparse_map
+"""
