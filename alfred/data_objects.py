@@ -1,6 +1,8 @@
 ## NEED TO TEST THE ATTRIBUTES ARE ASSIGNED CORRECTLY    
     ## write new quality cuts functions - maybe not within the classes but just using the apply_mask
 
+from useful_functions_global import *
+
 class Data():
     def __init__(self, data):
         self.data = data
