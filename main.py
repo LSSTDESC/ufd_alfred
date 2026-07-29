@@ -3,7 +3,7 @@ import os
 from lsst.daf.butler import Butler
 from star_gal_sep import *
 from utils import *
-from isochrone_test import *
+from search_algorithms import *
 import simple_adl.simple_adl.isochrone as isochrone
 import simple_adl.simple_adl.coordinate_tools as coordinate_tools
 #-----------------------------------
