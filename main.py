@@ -9,8 +9,8 @@ import simple_adl.simple_adl.coordinate_tools as coordinate_tools
 #-----------------------------------
 
 #this is a bit hard coded too but idk another work around
-#if alfred stays in a folder below the config always then this should work
-with open('../config.yaml', 'r') as ymlfile:
+#if main.py stays same folder as the config then this should work
+with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
 
     home_dir_str = cfg['setup']['home_dir']
