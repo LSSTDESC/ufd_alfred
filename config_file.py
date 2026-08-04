@@ -33,6 +33,6 @@ for band in bands:
     INCOLS += [f'{band}_model_extendedness']
 
 # Euclid Q1
-tile_to_coord = pd.read_csv('euclid_q1_tile_to_coord.csv')
+#tile_to_coord = pd.read_csv('scratch/euclid_q1_tile_to_coord.csv')
 
 # DP1
