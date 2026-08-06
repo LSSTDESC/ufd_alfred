@@ -1,5 +1,6 @@
 # Ultra Faint Dwarf Galaxies for Dark Matter
 
-Pipeline tools for using ultra-faint dwarf galaxies for dark matter analysis.
-Run by changing config.yaml to paths suitable for specific system and then run main.py
+Pipeline tools for using ultra-faint dwarf galaxies for dark matter analysis.  
+Run by changing config.yaml to paths suitable for specific system and then run main.py. 
+All pipeline functions live in alfred directory (named for the butler). Tests are to be written. Plots will be saved in the plots directory. Scratch is all my old code files.
 Works on NERSC right now (some code in scratch was written to work on USDF. I believe the only thing that changes are the paths to data/collections).  
