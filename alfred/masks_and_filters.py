@@ -25,7 +25,7 @@ def clean_euclid(data, flags, bands = None, fwhm_limit = 1.5):
 
 
 ## STELLAR MASKS BELOW HERE
-def colorcolor_cut(MergedData_object):
+def niroptical_color_stars(MergedData_object):
     colormask_left = ((MergedData_object.g_mag - MergedData_object.z_mag) <= 0.3)
     colormask_left &= ((MergedData_object.z_mag - MergedData_object.H_mag) < (-.5 + 1.7*(MergedData_object.g_mag - MergedData_object.z_mag)))
     #should I be enforcing a left end cut?

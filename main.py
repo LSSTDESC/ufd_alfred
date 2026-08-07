@@ -75,19 +75,26 @@ del lsst_table, euclid_table, merged_table
 gc.collect()
 
 #clean up quality
-#Q: which band snr should I enforce?
-snr_mask = masks_and_filters.clean_snr(merged_data_raw.g_mag, merged_data_raw.g_magerr, 4)
-snr_mask &= masks_and_filters.clean_snr(merged_data_raw.z_mag, merged_data_raw.z_magerr, 4)
-snr_mask &= masks_and_filters.clean_snr(merged_data_raw.VIS_mag, merged_data_raw.VIS_magerr, 4)
+#Q: which band snr should I enforce? - right now doing really lax snr > 3 cut
+snr_mask = masks_and_filters.clean_snr(merged_data_raw.g_mag, merged_data_raw.g_magerr, 3)
+snr_mask &= masks_and_filters.clean_snr(merged_data_raw.z_mag, merged_data_raw.z_magerr, 3)
+snr_mask &= masks_and_filters.clean_snr(merged_data_raw.VIS_mag, merged_data_raw.VIS_magerr, 3)
+#this enforces no per band flux flags
 lsst_flag_mask = masks_and_filters.clean_lsst(merged_data_raw.data, 'griz')
 #Q: which euclid flags to enforce?
-euclid_flag_mask = masks_and_filters.clean_euclid(merged_data_raw.data, [0,1,2])
-                                
+#0=no flags, 8=source close to a border, 512=source within an extended object area
+euclid_flag_mask = masks_and_filters.clean_euclid(merged_data_raw.data, [0,8,512])
+#mix em all together
 total_mask = snr_mask & lsst_flag_mask & euclid_flag_mask
-
+#cleaned up data
 merged_data = merged_data_raw.apply_mask(total_mask)
 
 #select for stars -- Zerjal + colorcolor cuts
+colorcolor_mask = masks_and_filters.niroptical_color_stars(merged_data)
+morphology_mask = masks_and_filters.Zerjal_stars(merged_data)
+morphncolor_mask = colorcolor_mask & morphology_mask
+#no one cared who I was til I put on the mask
+stellar_catalog = merged_data.apply_mask(morphncolor_mask)
 
 #isochrone_search
 
