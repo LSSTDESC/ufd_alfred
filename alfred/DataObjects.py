@@ -51,9 +51,12 @@ class LSSTnEuclidData(LSSTData):
     
         ## Euclid bands (flux given in mu_Jy)
         num = 2 #as suggested in Zerjal et al
+        self.VIS_mag = flux2mag(data[f'FLUX_VIS_{num}FWHM_APER'.lower()]*(10**3)) #convert to nJy
         self.H_mag = flux2mag(data[f'FLUX_H_{num}FWHM_APER'.lower()]*(10**3)) #convert to nJy
         self.Y_mag = flux2mag(data[f'FLUX_Y_{num}FWHM_APER'.lower()]*(10**3)) #convert to nJy
         self.J_mag = flux2mag(data[f'FLUX_J_{num}FWHM_APER'.lower()]*(10**3)) #convert to nJy
+        
+        self.VIS_magerr = fluxerr2magerr(self.VIS_mag, flux2mag(data[f'FLUXERR_VIS_{num}FWHM_APER'.lower()]*(10**3)))
         self.H_magerr = fluxerr2magerr(self.H_mag, flux2mag(data[f'FLUXERR_H_{num}FWHM_APER'.lower()]*(10**3)))
         self.Y_magerr = fluxerr2magerr(self.Y_mag, flux2mag(data[f'FLUXERR_Y_{num}FWHM_APER'.lower()]*(10**3)))
         self.J_magerr = fluxerr2magerr(self.J_mag, flux2mag(data[f'FLUXERR_J_{num}FWHM_APER'.lower()]*(10**3)))
@@ -66,4 +69,4 @@ class LSSTnEuclidData(LSSTData):
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTnEuclidData(new_data, self.lsst_release, self. euclid_release, self.field)
+        return LSSTnEuclidData(new_data, self.lsst_survey, self.euclid_survey, self.field)

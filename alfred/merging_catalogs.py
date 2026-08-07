@@ -51,6 +51,7 @@ def check_merge_data(tract, preload = True):
 # then function to merge catalogs, starting and ending with above
 def merge_catalogs(lsst_table, euclid_table, tract, preload = True, validation_needed = False):
     if not check_merge_data(tract, preload):
+        print("Check tells me data exists and you don't want to remerge. Opening existing file now")
         return Table.read(data_dir + f'/merged/{tract}_{survey}_{euclid_survey}_merged.parquet')
     print('Check tells me to start the merge, starting now')
 

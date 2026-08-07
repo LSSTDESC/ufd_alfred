@@ -4,7 +4,7 @@ import os
 import gc
 from astropy.coordinates import SkyCoord
 from lsst.daf.butler import Butler
-from alfred import utils, DataObjects, RegionObjects, merging_catalogs
+from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools
 
 #-----------------------------------
 
@@ -65,16 +65,27 @@ num = 2
 for band in ['VIS', 'Y', 'J', 'H']:
     euclid_INCOLS += f", FLAG_{band}, FLUX_{band}_{num}FWHM_APER, FLUXERR_{band}_{num}FWHM_APER".lower()
 
-euclid_table = tract.euclid_query(euclid_INCOLS, preload = False)
+euclid_table = tract.euclid_query(euclid_INCOLS, preload = True)
 
 #merge catalogs and clean up memory
 merged_table = merging_catalogs.merge_catalogs(lsst_table, euclid_table, tract.tract, 
-                                               preload = False, validation_needed = False)
-merged_data = DataObjects.LSSTnEuclidData(merged_table, survey, euclid_survey, field)
+                                               preload = True, validation_needed = False)
+merged_data_raw = DataObjects.LSSTnEuclidData(merged_table, survey, euclid_survey, field)
 del lsst_table, euclid_table, merged_table
 gc.collect()
 
 #clean up quality
+#Q: which band snr should I enforce?
+snr_mask = masks_and_filters.clean_snr(merged_data_raw.g_mag, merged_data_raw.g_magerr, 4)
+snr_mask &= masks_and_filters.clean_snr(merged_data_raw.z_mag, merged_data_raw.z_magerr, 4)
+snr_mask &= masks_and_filters.clean_snr(merged_data_raw.VIS_mag, merged_data_raw.VIS_magerr, 4)
+lsst_flag_mask = masks_and_filters.clean_lsst(merged_data_raw.data, 'griz')
+#Q: which euclid flags to enforce?
+euclid_flag_mask = masks_and_filters.clean_euclid(merged_data_raw.data, [0,1,2])
+                                
+total_mask = snr_mask & lsst_flag_mask & euclid_flag_mask
+
+merged_data = merged_data_raw.apply_mask(total_mask)
 
 #select for stars -- Zerjal + colorcolor cuts
 
