@@ -15,6 +15,16 @@ params = {'legend.fontsize': 'x-large',
 pad=20
 size=1
 
+def isochrone_plot():
+    fig, ax = plt.subplots(1,1, figsize=(6,6))
+        index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
+        ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
+        ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
+        ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
+        ax.scatter(data['g mag'] - data['r mag'], 
+                 data['g mag'], c='b')
+        plt.savefig(plots_dir + f'/isochrones/{stars_data.tract}_{stars_data.lsst_survey}_{stars_data.euclid_survey}.png')
+
 def color_magnitude(df, band1, band2,
                     color_data, color_label,
                     selection_label, title,

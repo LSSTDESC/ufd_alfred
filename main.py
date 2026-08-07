@@ -2,6 +2,7 @@ import sys
 import yaml
 import os
 import gc
+import numpy as np
 from astropy.coordinates import SkyCoord
 from lsst.daf.butler import Butler
 from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools
@@ -56,7 +57,7 @@ for band in bands:
 # call up just one tract from EDFS for now
 tract_num = 2394
 tract = RegionObjects.Tract(tract_num, butler)
-field = tract.field
+#field = tract.field
 lsst_table = tract.rubin_query(lsst_INCOLS)
       
 #insert Euclid data load here
@@ -70,7 +71,7 @@ euclid_table = tract.euclid_query(euclid_INCOLS, preload = True)
 #merge catalogs and clean up memory
 merged_table = merging_catalogs.merge_catalogs(lsst_table, euclid_table, tract.tract, 
                                                preload = True, validation_needed = False)
-merged_data_raw = DataObjects.LSSTnEuclidData(merged_table, survey, euclid_survey, field)
+merged_data_raw = DataObjects.LSSTnEuclidData(merged_table, survey, euclid_survey, tract.tract)
 del lsst_table, euclid_table, merged_table
 gc.collect()
 
@@ -97,7 +98,12 @@ morphncolor_mask = colorcolor_mask & morphology_mask
 stellar_catalog = merged_data.apply_mask(morphncolor_mask)
 
 #isochrone_search
+distances = np.arange(200, 2000, 100)
+isocut_stars_eachdistance = []
+for distance in distances:
+    isochrone_stars = search_tools.isochrone_search(stellar_catalog, distance)
+    isocut_stars_eachdistance.append(isochrone_stars)
+isocut_stars_eachdistance_arr = np.array(isocut_stars_eachdistance)
 
 #get maps ready -- need fracdet
-
 #compute_char_density

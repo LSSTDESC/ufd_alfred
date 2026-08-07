@@ -21,8 +21,8 @@ with open('config.yaml', 'r') as ymlfile:
     #external data is gonna be in a directory above - subject to change
     data_dir = os.path.expandvars(cfg['setup']['data_dir'])
     plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
-    if not os.path.exists(plots_dir):
-        os.mkdir(plots_dir)
+    if not os.path.exists(plots_dir+'/merged'):
+        os.mkdir(plots_dir+'/merged')
     results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
