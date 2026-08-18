@@ -28,7 +28,7 @@ def fluxerr2magerr(flux, flux_err):
     if index is not None:
         return pd.Series(mag, index=index)
     return magerr
-
+    
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     survey = cfg['survey']

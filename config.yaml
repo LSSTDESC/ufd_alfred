@@ -1,5 +1,5 @@
 setup : #user input
-  where : 'usdf' #or 'nersc'
+  where : 'nersc' #usdf or nersc
   home_dir : #path where I want everything to save
     nersc : '$HOME/ufd-dkm'
     usdf : '$HOME/rubin-user/ufd-dkm'
@@ -52,11 +52,15 @@ dp1:
     INCOLS_addition : ['{band}_sizeExtendedness', '{band}_sizeExtendedness_flag']
 
 dp2:
-    repo_config : 'dp2_prep'
-    collection : ['LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage1',
-                  'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage2',
-                  'LSSTCam/runs/DRP/DP2/v30_0_6_rc1/DM-53881/stage3',
-                  'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage4']
+    repo_config : 
+        nersc : 'dp2'
+        usdf : 'dp2_prep'
+    collection : 
+        nersc : 'dp2'
+        usdf : ['LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage1',
+                'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage2',
+                'LSSTCam/runs/DRP/DP2/v30_0_6_rc1/DM-53881/stage3',
+                'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage4']
     instrument : 'LSSTCam'
     skymap : 'lsst_cells_v2'
     #tract_list :

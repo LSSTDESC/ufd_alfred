@@ -32,12 +32,20 @@ with open('config.yaml', 'r') as ymlfile:
 def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
-    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = f'Tract: {uncut_data.tract},{uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data')
+    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = f'Tract: {uncut_data.tract}, {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data')
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
 
-    ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
-    ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
+    #ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
+    #ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
+    ax.scatter(uncut_data.g_mag - uncut_data.r_mag, 
+           uncut_data.g_mag,
+           s=10, c = 'r', alpha =0.3,
+           label = 'Before cut')
+    ax.scatter(cut_data.g_mag - cut_data.r_mag, 
+               cut_data.g_mag, 
+               s=10, c = 'b', alpha =0.5, 
+               label = 'After cut')
     ax.legend()
 
     plt.show()

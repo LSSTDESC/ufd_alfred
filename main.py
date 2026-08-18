@@ -25,8 +25,8 @@ with open('config.yaml', 'r') as ymlfile:
 
     survey = cfg['survey']
     euclid_survey = cfg['euclid_survey']
-    repo_config = cfg[survey]['repo_config']
-    collection = cfg[survey]['collection']
+    repo_config = cfg[survey]['repo_config'][where]
+    collection = cfg[survey]['collection'][where]
     #tract_list = cfg[survey]['tract_list']
     INCOLS_addition = cfg[survey]['INCOLS_addition']
 
@@ -104,11 +104,11 @@ nonans_mask = masks_and_filters.clean_nans(stellar_catalog.g_mag, stellar_catalo
 nonans_stellar_catalog = stellar_catalog.apply_mask(nonans_mask)
 ''' # I don't think applying this mask did much of anything
 #distances = np.arange(200, 2000, 100)
-distances = np.linspace(200,200,1)
+distance = 300
 isocut_stars_eachdistance = []
-for distance in distances:
-    isochrone_stars = search_tools.isochrone_search(stellar_catalog, distance, graph=True, save=True)
-    isocut_stars_eachdistance.append(isochrone_stars)
+#for distance in distances:
+isochrone_stars = search_tools.isochrone_search(stellar_catalog, distance, graph=True, save=True)
+#    isocut_stars_eachdistance.append(isochrone_stars)
 isocut_stars_eachdistance_arr = np.array(isocut_stars_eachdistance)
 
 ## get maps ready -- need fracdet
