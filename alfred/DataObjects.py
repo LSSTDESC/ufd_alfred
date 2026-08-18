@@ -57,11 +57,14 @@ class LSSTnEuclidData(LSSTData):
         self.Y_mag = utils.flux2mag(data[f'FLUX_Y_{num}FWHM_APER'.lower()]*(10**3)) #convert to nJy
         self.J_mag = utils.flux2mag(data[f'FLUX_J_{num}FWHM_APER'.lower()]*(10**3)) #convert to nJy
         
-        self.VIS_magerr = utils.fluxerr2magerr(self.VIS_mag, 
+        self.VIS_magerr = utils.fluxerr2magerr(data[f'FLUX_VIS_{num}FWHM_APER'.lower()]*(10**3), 
                                                data[f'FLUXERR_VIS_{num}FWHM_APER'.lower()]*(10**3))
-        self.H_magerr = utils.fluxerr2magerr(self.H_mag, data[f'FLUXERR_H_{num}FWHM_APER'.lower()]*(10**3))
-        self.Y_magerr = utils.fluxerr2magerr(self.Y_mag, data[f'FLUXERR_Y_{num}FWHM_APER'.lower()]*(10**3))
-        self.J_magerr = utils.fluxerr2magerr(self.J_mag, data[f'FLUXERR_J_{num}FWHM_APER'.lower()]*(10**3))
+        self.H_magerr = utils.fluxerr2magerr(data[f'FLUX_H_{num}FWHM_APER'.lower()]*(10**3),
+                                             data[f'FLUXERR_H_{num}FWHM_APER'.lower()]*(10**3))
+        self.Y_magerr = utils.fluxerr2magerr(data[f'FLUX_Y_{num}FWHM_APER'.lower()]*(10**3),
+                                             data[f'FLUXERR_Y_{num}FWHM_APER'.lower()]*(10**3))
+        self.J_magerr = utils.fluxerr2magerr(data[f'FLUX_J_{num}FWHM_APER'.lower()]*(10**3),
+                                             data[f'FLUXERR_J_{num}FWHM_APER'.lower()]*(10**3))
 
         ## morphology
         self.pointlikeprob = data['point_like_prob']
