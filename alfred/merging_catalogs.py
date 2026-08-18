@@ -4,6 +4,7 @@ import gc
 import sys
 import os
 import yaml
+from alfred import plotting_functions
 from astropy.table import Table, vstack, join
 #Goes up a directories to get the updated astroquery
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
@@ -20,9 +21,6 @@ with open('config.yaml', 'r') as ymlfile:
     pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
     #external data is gonna be in a directory above - subject to change
     data_dir = os.path.expandvars(cfg['setup']['data_dir'])
-    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
-    if not os.path.exists(plots_dir+'/merged'):
-        os.mkdir(plots_dir+'/merged')
     results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
@@ -94,108 +92,9 @@ def merge_catalogs(lsst_table, euclid_table, tract, preload = True, validation_n
                        format='parquet', overwrite = True)
 
     if validation_needed==True:
-        match_validation_plots(merged_table, matches_lsst, matches_euclid, 
+        plotting_functions.match_validation_plots(merged_table, matches_lsst, matches_euclid, 
                                unmatched_lsst, unmatched_euclid, 
                                lsst_table, euclid_field, ds)
     del matches_lsst, matches_euclid, unmatched_lsst, unmatched_euclid, lsst_table, euclid_field, ds
     gc.collect()
     return merged_table
-    
-#to do: fix this
-def match_validation_plots(merged_df, matches_lsst, matches_euclid, 
-                           unmatched_lsst, unmatched_euclid, 
-                           lsst_table, euclid_field, ds):
-    ## Match Verification
-        b = 60
-        #1D histogram of matches and not matches
-        fig, ax = plt.subplots(1,1, figsize=(13,5))
-        match_vis_mag = flux2mag(matches_euclid['FLUX_VIS_2FWHM_APER']*(10**3))
-        unmatch_vis_mag = flux2mag(unmatched_euclid['FLUX_VIS_2FWHM_APER']*(10**3))
-        total_vis_mag = flux2mag(euclid_field['FLUX_VIS_2FWHM_APER']*(10**3))
-        plt.hist(match_vis_mag, bins = b, histtype = 'step', color='b', label = 'Matched Euclid Sources')
-        plt.hist(unmatch_vis_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched Euclid Sources')
-        plt.hist(total_vis_mag, bins = b, histtype = 'step', color='k', label = 'Total Euclid Sources')
-        plt.xlabel('FLUX_VIS_2FWHM_APER mag')
-        plt.xlim(16,36)
-        plt.ylabel('Number counts')
-        plt.yscale('log')
-        plt.title(f'Tract {tract}: Euclid Source Match/Unmatch')
-        plt.legend()
-        plt.show()
-        
-        match_i_mag = flux2mag(matches_lsst['i_psfFlux'])
-        unmatch_i_mag = flux2mag(unmatched_lsst['i_psfFlux'])
-        total_i_mag = flux2mag(lsst_datafile['i_psfFlux'])
-        fig, ax = plt.subplots(1,1, figsize=(13,5))
-        plt.hist(match_i_mag, bins = b, histtype = 'step', color='c', label = 'Matched LSST Sources')
-        plt.hist(unmatch_i_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched LSST Sources')
-        plt.hist(total_i_mag, bins = b, histtype = 'step', color='k', label = 'Total LSST Sources')
-        plt.xlabel('i_psfFlux mag')
-        plt.xlim(16,36)
-        plt.ylabel('Number counts')
-        plt.yscale('log')
-        plt.title(f'Tract {tract}: LSST Source Match/Unmatch')
-        plt.legend()
-        plt.show()
-
-        #2D histogram of matches in Euclid and LSST, does it look the same?
-        fig, ax = plt.subplots(1,2, figsize=(13,5))
-        _, _, _, im = ax[0].hist2d(matches_euclid['RIGHT_ASCENSION'], matches_euclid['DECLINATION'], bins=100)
-        plt.colorbar(im, ax=ax[0])
-        ax[0].set(title = f'Tract {tract}: Matches in Euclid', ylabel = "Dec (deg)", xlabel = "RA (deg)")
-        ax[0].invert_xaxis()
-        _, _, _, im = ax[1].hist2d(matches_lsst['coord_ra'], matches_lsst['coord_dec'], bins=100)
-        plt.colorbar(im, ax=ax[1])
-        ax[1].set(title = f'Tract {tract}: Matches in LSST', ylabel = "Dec (deg)", xlabel = "RA (deg)")
-        ax[1].invert_xaxis()
-        plt.show()
-
-        '''
-        #histogram of separation
-        ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
-        #I forced in the function that matches would be <1"
-        plt.hist(ds, histtype='step', range=(0,1))
-        plt.xlabel('separation [arcsec]')
-        plt.title(f'Tract {tract}: Matched Source Separation')
-        plt.tight_layout()
-        plt.show()
-
-        #checking that dec and DECLINATION relation is slope of 1
-        plt.scatter(merged_df['coord_dec'],merged_df['DECLINATION'],)
-        '''
-        i_mag = flux2mag(lsst_datafile['i_psfFlux'])
-        vis_mag = flux2mag(euclid_field['FLUX_VIS_PSF']*10**3)
-        
-        print(len(i_mag))
-        
-        lsst_datafile1 = lsst_datafile #[(i_mag < 22)]
-        euclid_field1 = euclid_field #[(vis_mag < 22)]
-        
-        plt.scatter(euclid_field1['RIGHT_ASCENSION'], euclid_field1['DECLINATION'], 
-                    marker = '+', label = 'Euclid Sources', #c = flux2mag(euclid_field1['FLUX_VIS_PSF']*10**3), 
-                   )
-        plt.scatter(lsst_datafile1['coord_ra'], lsst_datafile1['coord_dec'], 
-                    marker = 'x', label = 'LSST Sources', #c = flux2mag(lsst_datafile1['i_psfFlux']),
-                   )
-        plt.xlim(59.85, 59.84)
-        plt.xlabel('RA (deg)')
-        plt.ylim(-48.55,-48.54)
-        plt.ylabel('DEC (deg)')
-        #plt.colorbar()
-        plt.legend()
-        plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
-        plt.show()
-        
-        ra_diff = (merged_df['RIGHT_ASCENSION'] - merged_df['coord_ra'])*3600
-        dec_diff = (merged_df['DECLINATION'] - merged_df['coord_dec'])*3600
-        plt.hist(ra_diff, bins = 100)
-        plt.title('Merged Catalog RA difference')
-        plt.xlabel('Euclid RA - LSST RA (arcsec)')
-        plt.xlim(-1,1)
-        plt.show()
-        
-        plt.hist(dec_diff, bins = 100)
-        plt.xlim(-0.5,0.5)
-        plt.xlabel('Euclid DEC - LSST DEC (arcsec)')
-        plt.title('Merged Catalog DEC difference')
-        plt.show()

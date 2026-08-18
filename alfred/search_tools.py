@@ -2,6 +2,7 @@ import sys
 sys.path.append("../") #has to be run in same directory rn
 import simple_adl.simple_adl.isochrone as isochrone
 import simple_adl.simple_adl.coordinate_tools as coordinate_tools
+from alfred import plotting_functions
 import matplotlib.pyplot as plt
 import numpy as np
 from astropy.table import Table
@@ -25,7 +26,7 @@ with open('config.yaml', 'r') as ymlfile:
     survey = cfg['survey']
     euclid_survey = cfg['euclid_survey']
 
-def cut_isochrone_path(band1, band2, band1_err, band2_err, isochrone, radius=0.1, return_all=False):
+def cut_isochrone_path(band1, band2, band1_err, band2_err, isochrone, mag_max = 26, radius=0.1, return_all=False):
     """
     Cut to identify objects within isochrone cookie-cutter. Modified slightly from simple_adl
     """
@@ -54,12 +55,9 @@ def cut_isochrone_path(band1, band2, band1_err, band2_err, isochrone, radius=0.1
 
     cut = np.logical_or(cut_1, cut_2)
     
-    mag_max = 24 #??? idk
-    #mag_bins = np.arange(17., 24.1, 0.1)
     mag_bins = np.arange(17., mag_max+0.1, 0.1)
     mag_centers = 0.5 * (mag_bins[1:] + mag_bins[0:-1])
     magerr = np.tile(0., len(mag_centers))
-    
     for ii in range(0, len(mag_bins) - 1):
         cut_mag_bin = (band1 > mag_bins[ii]) & (band1 < mag_bins[ii + 1])
         magerr[ii] = np.median(np.sqrt(0.1**2 + band1_err[cut_mag_bin]**2 + band2_err[cut_mag_bin]**2))
@@ -69,7 +67,7 @@ def cut_isochrone_path(band1, band2, band1_err, band2_err, isochrone, radius=0.1
         return cut
 
 
-def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True):
+def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True, save=True):
     '''
     I'm assuming stars_data is a LSSTData or LSSTnEuclidData object
     '''
@@ -85,11 +83,11 @@ def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True):
           band_1= 'g',
           band_2= 'r')
     
-    cut = cut_isochrone_path(star_data.g_mag, star_data.r_mag, star_data.g_magerr, star_data.r_magerr, iso)
+    cut = cut_isochrone_path(star_data.g_mag, star_data.r_mag, star_data.g_magerr, star_data.r_magerr, iso, radius = 0.1)
     isochrone_stars = star_data.apply_mask(cut)
 
-    #if graph==True:
-    #    isochrone_plot()
+    if graph==True:
+        plotting_functions.isochrone_plot(iso, distance_modulus, star_data, isochrone_stars, save=save)
     
     return isochrone_stars
         

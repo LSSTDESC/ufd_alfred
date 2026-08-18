@@ -1,6 +1,8 @@
 ## I don't know if this should live in a separate file or as a method of the dataclasses 
 ## All of these functions will return masks that can be put into the apply_mask methods
 
+import numpy as np
+
 ## QUALITY MASKS BELOW HERE
 def clean_snr(band, error, threshold=5):
     return (band/error > threshold)
@@ -21,6 +23,11 @@ def clean_euclid(data, flags, bands = None, fwhm_limit = 1.5):
         mask |= (data['DET_QUALITY_FLAG'.lower()] == flag)
     ## enforcing that euclid sources having FWHM above 1.5" is spurious (Zerjal et al. suggestion)
     mask &= (data['FWHM'.lower()] <= fwhm_limit)
+    return mask
+
+def clean_nans(band, band_err):
+    mask = (np.isfinite(band))
+    mask &= (np.isfinite(band_err))
     return mask
 
 

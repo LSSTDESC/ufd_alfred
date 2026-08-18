@@ -17,11 +17,16 @@ def flux2mag(flux):
 #    return (flux*u.nJy).to(u.ABmag).value <-- this instead ??
 
 def fluxerr2magerr(flux, flux_err):
-    flux = np.ma.filled(np.ma.asarray(flux, dtype=float), fill_value=np.nan)
-    flux_err = np.ma.filled(np.ma.asarray(flux_err, dtype=float), fill_value=np.nan)
+    #flux = np.ma.filled(np.ma.asarray(flux, dtype=float), fill_value=np.nan)
+    index = flux.index if hasattr(flux, 'index') else None
+    flux = np.asarray(flux, dtype=float)
+    flux_err = np.asarray(flux_err, dtype=float)
+    #flux_err = np.ma.filled(np.ma.asarray(flux_err, dtype=float), fill_value=np.nan)
     with np.errstate(invalid='ignore', divide='ignore'):
         magerr = (2.5 / np.log(10)) * (flux_err / flux)
     magerr[~np.isfinite(magerr)] = np.nan
+    if index is not None:
+        return pd.Series(mag, index=index)
     return magerr
 
 with open('config.yaml', 'r') as ymlfile:

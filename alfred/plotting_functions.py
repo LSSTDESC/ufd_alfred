@@ -3,7 +3,9 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
 import seaborn as sns
-from useful_functions_global import *
+from alfred import utils
+import yaml
+import os
 ## ~~~~~~~~~ PLOTS ~~~~~~~~~~~~
 
 params = {'legend.fontsize': 'x-large',
@@ -15,15 +17,133 @@ params = {'legend.fontsize': 'x-large',
 pad=20
 size=1
 
-def isochrone_plot():
+with open('config.yaml', 'r') as ymlfile:
+# this is a bit hard coded too but idk another work around
+# if main.py stays same folder as the config then this should work
+    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+    # assuming that it's cool that the whole github repo is considered "home"
+    home_dir = os.path.expandvars(cfg['setup']['home_dir'])
+    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
+    if not os.path.exists(plots_dir):
+        os.mkdir(plots_dir)
+
+
+def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     fig, ax = plt.subplots(1,1, figsize=(6,6))
-        index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
-        ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
-        ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
-        ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
-        ax.scatter(data['g mag'] - data['r mag'], 
-                 data['g mag'], c='b')
-        plt.savefig(plots_dir + f'/isochrones/{stars_data.tract}_{stars_data.lsst_survey}_{stars_data.euclid_survey}.png')
+    index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
+    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
+    
+    ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
+    ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
+    
+    ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
+    ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
+    ax.legend()
+    
+    plt.show()
+    if save == True:
+        plt.savefig(plots_dir + f'/isochrones/{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}.png')
+
+
+#to do: fix this
+def match_validation_plots(merged_df, matches_lsst, matches_euclid, 
+                           unmatched_lsst, unmatched_euclid, 
+                           lsst_table, euclid_field, ds):
+    ## Match Verification
+        b = 60
+        #1D histogram of matches and not matches
+        fig, ax = plt.subplots(1,1, figsize=(13,5))
+        match_vis_mag = flux2mag(matches_euclid['FLUX_VIS_2FWHM_APER']*(10**3))
+        unmatch_vis_mag = flux2mag(unmatched_euclid['FLUX_VIS_2FWHM_APER']*(10**3))
+        total_vis_mag = flux2mag(euclid_field['FLUX_VIS_2FWHM_APER']*(10**3))
+        plt.hist(match_vis_mag, bins = b, histtype = 'step', color='b', label = 'Matched Euclid Sources')
+        plt.hist(unmatch_vis_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched Euclid Sources')
+        plt.hist(total_vis_mag, bins = b, histtype = 'step', color='k', label = 'Total Euclid Sources')
+        plt.xlabel('FLUX_VIS_2FWHM_APER mag')
+        plt.xlim(16,36)
+        plt.ylabel('Number counts')
+        plt.yscale('log')
+        plt.title(f'Tract {tract}: Euclid Source Match/Unmatch')
+        plt.legend()
+        plt.show()
+        
+        match_i_mag = flux2mag(matches_lsst['i_psfFlux'])
+        unmatch_i_mag = flux2mag(unmatched_lsst['i_psfFlux'])
+        total_i_mag = flux2mag(lsst_datafile['i_psfFlux'])
+        fig, ax = plt.subplots(1,1, figsize=(13,5))
+        plt.hist(match_i_mag, bins = b, histtype = 'step', color='c', label = 'Matched LSST Sources')
+        plt.hist(unmatch_i_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched LSST Sources')
+        plt.hist(total_i_mag, bins = b, histtype = 'step', color='k', label = 'Total LSST Sources')
+        plt.xlabel('i_psfFlux mag')
+        plt.xlim(16,36)
+        plt.ylabel('Number counts')
+        plt.yscale('log')
+        plt.title(f'Tract {tract}: LSST Source Match/Unmatch')
+        plt.legend()
+        plt.show()
+
+        #2D histogram of matches in Euclid and LSST, does it look the same?
+        fig, ax = plt.subplots(1,2, figsize=(13,5))
+        _, _, _, im = ax[0].hist2d(matches_euclid['RIGHT_ASCENSION'], matches_euclid['DECLINATION'], bins=100)
+        plt.colorbar(im, ax=ax[0])
+        ax[0].set(title = f'Tract {tract}: Matches in Euclid', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+        ax[0].invert_xaxis()
+        _, _, _, im = ax[1].hist2d(matches_lsst['coord_ra'], matches_lsst['coord_dec'], bins=100)
+        plt.colorbar(im, ax=ax[1])
+        ax[1].set(title = f'Tract {tract}: Matches in LSST', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+        ax[1].invert_xaxis()
+        plt.show()
+
+        '''
+        #histogram of separation
+        ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
+        #I forced in the function that matches would be <1"
+        plt.hist(ds, histtype='step', range=(0,1))
+        plt.xlabel('separation [arcsec]')
+        plt.title(f'Tract {tract}: Matched Source Separation')
+        plt.tight_layout()
+        plt.show()
+
+        #checking that dec and DECLINATION relation is slope of 1
+        plt.scatter(merged_df['coord_dec'],merged_df['DECLINATION'],)
+        '''
+        i_mag = flux2mag(lsst_datafile['i_psfFlux'])
+        vis_mag = flux2mag(euclid_field['FLUX_VIS_PSF']*10**3)
+        
+        print(len(i_mag))
+        
+        lsst_datafile1 = lsst_datafile #[(i_mag < 22)]
+        euclid_field1 = euclid_field #[(vis_mag < 22)]
+        
+        plt.scatter(euclid_field1['RIGHT_ASCENSION'], euclid_field1['DECLINATION'], 
+                    marker = '+', label = 'Euclid Sources', #c = flux2mag(euclid_field1['FLUX_VIS_PSF']*10**3), 
+                   )
+        plt.scatter(lsst_datafile1['coord_ra'], lsst_datafile1['coord_dec'], 
+                    marker = 'x', label = 'LSST Sources', #c = flux2mag(lsst_datafile1['i_psfFlux']),
+                   )
+        plt.xlim(59.85, 59.84)
+        plt.xlabel('RA (deg)')
+        plt.ylim(-48.55,-48.54)
+        plt.ylabel('DEC (deg)')
+        #plt.colorbar()
+        plt.legend()
+        plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
+        plt.show()
+        
+        ra_diff = (merged_df['RIGHT_ASCENSION'] - merged_df['coord_ra'])*3600
+        dec_diff = (merged_df['DECLINATION'] - merged_df['coord_dec'])*3600
+        plt.hist(ra_diff, bins = 100)
+        plt.title('Merged Catalog RA difference')
+        plt.xlabel('Euclid RA - LSST RA (arcsec)')
+        plt.xlim(-1,1)
+        plt.show()
+        
+        plt.hist(dec_diff, bins = 100)
+        plt.xlim(-0.5,0.5)
+        plt.xlabel('Euclid DEC - LSST DEC (arcsec)')
+        plt.title('Merged Catalog DEC difference')
+        plt.show()
+    #save to merged_verification
 
 def color_magnitude(df, band1, band2,
                     color_data, color_label,
@@ -32,7 +152,7 @@ def color_magnitude(df, band1, band2,
                     histogram = False, ax = None,
                     colorbar_limits = (0,1),
                     x_lim = (-1, 4), y_lim = (30, 18),
-                    save = False, plots_path = None, filename = None):
+                    save = False, filename = None):
 
     # NOTE: not generalized yet, ONLY plots LSST bands
     """
@@ -130,7 +250,7 @@ def color_color(band_list,
                 colors = 'viridis',
                 histogram = False, ax = None,
                 y_lim = None, x_lim = None,
-                save = False, plots_path = None, filename = None):
+                save = False, filename = None):
     """
     Plots color-color for arbitrary bands
 
@@ -232,7 +352,7 @@ def star_gal_sep(df, separator,
                  selection_label, title, colors = 'viridis_r',
                  histogram = False, ax = None, line_plt = None,
                  colorbar_limits = (0,1), y_lim = (-0.1, 0.6), x_lim = (18,28),
-                 save = False, plots_path = '', filename = None):
+                 save = False, filename = None):
     '''
     Plots the morphology across magnitudes to show star-galaxy classifiers
     Shows magnitude where things start getting confused
@@ -349,7 +469,7 @@ def star_gal_sep(df, separator,
 
 
 ## ~~~~~ probably very outdated function ~~~~
-def color_magnitude2(star_df, pltL_dict, pltR_dict, title = None, save = False, plots_path = None, filename = None):
+def color_magnitude2(star_df, pltL_dict, pltR_dict, title = None, save = False, filename = None):
     """
     Plots 2 subplots of color-magnitude diagrams, band1 vs band1-band2
 

@@ -7,8 +7,8 @@ output:
   plots_dir : 'plots'
 
 #change with new data releases
-survey : 'dp1' 
-#survey : 'dp2'
+#survey : 'dp1' 
+survey : 'dp2'
 euclid_survey : 'q1'
 
 dp1:
@@ -49,8 +49,8 @@ dp1:
     INCOLS_addition : ['{band}_sizeExtendedness', '{band}_sizeExtendedness_flag']
 
 dp2:
-    #repo_config : 
-    #collection :
+    repo_config : 'dp2'
+    collection : 'dp2'
     instrument : 'LSSTCam'
     skymap : 'lsst_cells_v2'
     tract_list : 
