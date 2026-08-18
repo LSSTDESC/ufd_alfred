@@ -1,13 +1,16 @@
-setup: #user input
-  home_dir : '$HOME/ufd-dkm' #path where I want everything to save
+setup : #user input
+  where : 'usdf' #or 'nersc'
+  home_dir : #path where I want everything to save
+    nersc : '$HOME/ufd-dkm'
+    usdf : '$HOME/rubin-user/ufd-dkm'
   pckg_dir : 'alfred' #path to the package
-  data_dir : '$HOME/euclid_data' #path to the external data needed (maps, euclid data, etc)
+  data_dir : 'euclid_data' #path to the external data needed (maps, euclid data, etc)
 output:
   results_dir : 'results'
   plots_dir : 'plots'
 
 #change with new data releases
-#survey : 'dp1' 
+#survey : 'dp1'
 survey : 'dp2'
 euclid_survey : 'q1'
 
@@ -17,47 +20,50 @@ dp1:
     instrument : 'LSSTComCam'
     skymap : 'lsst_cells_v1'
     tract_list : [453, 454, 4849, 5063, 4848, 2394, 2234, 4016, 4017, 4218, 4217, 5525, 5526, 7611, 7610, 7850, 10463, 10464, 10704]
-    tract2field_dict : {453: '47 Tuc', 
+    tract2field_dict : {453: '47 Tuc',
                         454: '47 Tuc',
-                        4849: 'ECDFS', 
+                        4849: 'ECDFS',
                         5063: 'ECDFS',
-                        4848: 'ECDFS', 
-                        2394: 'EDFS', 
+                        4848: 'ECDFS',
+                        2394: 'EDFS',
                         2234: 'EDFS',
-                        4016: 'Fornax', 
-                        4017: 'Fornax', 
-                        4218: 'Fornax', 
-                        4217: 'Fornax', 
-                        5525: 'Rubin_SV_095-25', 
-                        5526: 'Rubin_SV_095-25', 
-                        7611: 'Seagull', 
-                        7610: 'Seagull', 
+                        4016: 'Fornax',
+                        4017: 'Fornax',
+                        4218: 'Fornax',
+                        4217: 'Fornax',
+                        5525: 'Rubin_SV_095-25',
+                        5526: 'Rubin_SV_095-25',
+                        7611: 'Seagull',
+                        7610: 'Seagull',
                         7850: 'Seagull',
-                        10463: 'Rubin_SV_38_7', 
-                        10464: 'Rubin_SV_38_7', 
+                        10463: 'Rubin_SV_38_7',
+                        10464: 'Rubin_SV_38_7',
                         10704: 'Rubin_SV_38_7'
                         }
-    field2tract_dict : {'47 Tuc' : [453], 
+    field2tract_dict : {'47 Tuc' : [453],
                         '47 Tuc' : [454],
-                        'ECDFS' : [4849, 5063, 4848], 
+                        'ECDFS' : [4849, 5063, 4848],
                         'EDFS' : [2394, 2234],
-                        'Fornax' : [4016, 4017, 4218, 4217], 
-                        'Rubin_SV_095-25' : [5525, 5526], 
+                        'Fornax' : [4016, 4017, 4218, 4217],
+                        'Rubin_SV_095-25' : [5525, 5526],
                         'Seagull' : [7611, 7610, 7850],
                         'Rubin_SV_38_7' : [10463, 10464, 10704]
                         }
     INCOLS_addition : ['{band}_sizeExtendedness', '{band}_sizeExtendedness_flag']
 
 dp2:
-    repo_config : 'dp2'
-    collection : 'dp2'
+    repo_config : 'dp2_prep'
+    collection : ['LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage1',
+                  'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage2',
+                  'LSSTCam/runs/DRP/DP2/v30_0_6_rc1/DM-53881/stage3',
+                  'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage4']
     instrument : 'LSSTCam'
     skymap : 'lsst_cells_v2'
-    tract_list : 
+    #tract_list :
     field2tract_dict : {'47 Tuc' : [531, 532, 453, 454],
-                        'ECDFS' : [4848, 4849, 5063, 4636, 4637, 4638, 4847, 4850, 5061, 5062, 5064, 5065, 5279, 5280, 5281, 
+                        'ECDFS' : [4848, 4849, 5063, 4636, 4637, 4638, 4847, 4850, 5061, 5062, 5064, 5065, 5279, 5280, 5281,
                                  5282], #Euclid's "Euclid Deep Field Fornax" encompasses Extended Chandra Deep Field South
-                        'EDFS' : [2078, 2079, 2080, 2232, 2233, 2234, 2235, 2236, 2237, 2392, 2393, 2394, 2395, 2396, 2397, 
+                        'EDFS' : [2078, 2079, 2080, 2232, 2233, 2234, 2235, 2236, 2237, 2392, 2393, 2394, 2395, 2396, 2397,
                                 2557, 2558, 2559, 2560, 2561, 2562, 2728, 2729, 2730, 2731],
                         'Fornax' : [4016, 4017, 4218, 4217],
                         'FDSG' : [4016, 4017, 4218, 4217], #same as Fornax idk how it'll be referred to
