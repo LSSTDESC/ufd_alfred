@@ -9,7 +9,7 @@ from astropy.table import Table, vstack, join
 #Goes up a directories to get the updated astroquery
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 ?
-sys.path.append(os.path.abspath('../'))
+#sys.path.append(os.path.abspath('../'))
 from ugali.utils.projector import match
 ## function to create euclid + rubin datasets and register to the data registry on NERSC
 ## don't know where I want this to live quite yet
@@ -17,10 +17,13 @@ from ugali.utils.projector import match
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     #assuming that it's cool that the whole github repo is considered "home"
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'])
+    where = cfg['setup']['where']
+    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
     pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
     #external data is gonna be in a directory above - subject to change
-    data_dir = os.path.expandvars(cfg['setup']['data_dir'])
+    data_dir = os.path.join(home_dir, cfg['setup']['data_dir'])
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir)
     results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
@@ -88,12 +91,14 @@ def merge_catalogs(lsst_table, euclid_table, tract, preload = True, validation_n
     matches_lsst['_match_id'] = np.arange(len(matches_lsst))
     matches_euclid['_match_id'] = np.arange(len(matches_euclid))
     merged_table = join(matches_lsst, matches_euclid, keys='_match_id')
-    merged_table.write(data_dir + f'/merged/{tract}_{survey}_{euclid_survey}_merged.parquet', 
+    if not os.path.exists(data_dir + f'/merged'):
+        os.mkdir(data_dir + f'/merged')
+    merged_table.write(data_dir + f'/merged/{tract}_{survey}_{euclid_survey}_merged.parquet',
                        format='parquet', overwrite = True)
 
     if validation_needed==True:
-        plotting_functions.match_validation_plots(merged_table, matches_lsst, matches_euclid, 
-                               unmatched_lsst, unmatched_euclid, 
+        plotting_functions.match_validation_plots(merged_table, matches_lsst, matches_euclid,
+                               unmatched_lsst, unmatched_euclid,
                                lsst_table, euclid_field, ds)
     del matches_lsst, matches_euclid, unmatched_lsst, unmatched_euclid, lsst_table, euclid_field, ds
     gc.collect()

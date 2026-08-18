@@ -15,19 +15,19 @@ with open('config.yaml', 'r') as ymlfile:
 # if main.py stays same folder as the config then this should work
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     # assuming that it's cool that the whole github repo is considered "home"
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'])
+    where = cfg['setup']['where']
+    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
     pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
     # external data is gonna be in a directory above - subject to change
-    data_dir = os.path.expandvars(cfg['setup']['data_dir'])
     results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
-    
+
     survey = cfg['survey']
     euclid_survey = cfg['euclid_survey']
     repo_config = cfg[survey]['repo_config']
     collection = cfg[survey]['collection']
-    tract_list = cfg[survey]['tract_list']
+    #tract_list = cfg[survey]['tract_list']
     INCOLS_addition = cfg[survey]['INCOLS_addition']
 
 ## Initiate the Butler Instance

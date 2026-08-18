@@ -22,7 +22,8 @@ with open('config.yaml', 'r') as ymlfile:
 # if main.py stays same folder as the config then this should work
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     # assuming that it's cool that the whole github repo is considered "home"
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'])
+    where = cfg['setup']['where']
+    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
     plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
@@ -32,14 +33,14 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
     ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18))
-    
+
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
-    
+
     ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
     ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
     ax.legend()
-    
+
     plt.show()
     if save == True:
         plt.savefig(plots_dir + f'/isochrones/{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}.png')

@@ -6,6 +6,12 @@ import os
 import sys
 from astropy.table import Table
 from alfred import utils
+#first need to load in the module I need
+#Goes up a directory to get the updated astroquery
+#sys.path.append(os.path.abspath('../..'))
+from astroquery_updated.esa.euclid import Euclid
+#I really need to fix this, maybe github submodules or enforcing a version of astroquery
+#I think it's version 0.4.11 or 10?
 
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
@@ -13,7 +19,10 @@ with open('config.yaml', 'r') as ymlfile:
     skymap = cfg[survey]['skymap']
     repo_config = cfg[survey]['repo_config']
     collection = cfg[survey]['collection']
-    data_dir = os.path.expandvars(cfg['setup']['data_dir'])
+    where = cfg['setup']['where']
+    data_dir = os.path.join(os.path.expandvars(cfg['setup']['home_dir'][where]), cfg['setup']['data_dir'])
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir)
     euclid_survey = cfg['euclid_survey']
 
 class Tract():
@@ -24,10 +33,10 @@ class Tract():
         '''
         self.tract = tract
         self.field = utils.get_field(tract)
-        
+
         self.butler = butler
         SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
-        
+
         self.center = SkyCoord(SkyMap.generateTract(tract).getCtrCoord().getRa().asDegrees()*u.deg, 
                                SkyMap.generateTract(tract).getCtrCoord().getDec().asDegrees()*u.deg, 
                                frame='icrs')
@@ -43,7 +52,7 @@ class Tract():
                 corners_str += f'{ra.value}, {dec.value}, '
         self.corners_str = corners_str.removesuffix(', ')
         self.corners_Angle = SkyMap.getRaDecRange(tract)
-        
+
         self.tract_data = 0
 
     def rubin_query(self, INCOLS):
@@ -58,12 +67,6 @@ class Tract():
         return full_tract
 
     def euclid_query(self, INCOLS, preload = True):
-        #first need to load in the module I need
-        #Goes up a directory to get the updated astroquery
-        sys.path.append(os.path.abspath('../..'))
-        from astroquery_updated.astroquery.esa.euclid import Euclid
-        #I really need to fix this, maybe github submodules or enforcing a version of astroquery
-        #I think it's version 0.4.11 or 10?
         if not os.path.exists(data_dir + f'/{euclid_survey}'):
             print("no Euclid data folder, making one now")
             os.mkdir(data_dir + f'/{euclid_survey}')
@@ -72,7 +75,7 @@ class Tract():
         if not os.path.exists(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet'):
             print("Euclid data doesn't exist")
             preload = False
-            
+
         if preload == True:
             print("Euclid data exists and you don't want to overwrite existing data, opening file now")
             results_table = Table.read(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet')
@@ -80,16 +83,18 @@ class Tract():
             print("Euclid data doesn't exist or you want to overwrite existing data, querying now")
             query = f'SELECT {INCOLS} FROM mer_catalogue'
             radius = 1.7 #going for bigger than a tract
-            #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value}, 
+            #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
             #                            right_ascension, declination) < {radius}'''
             query += f''' WHERE CONTAINS(POINT('ICRS', right_ascension, declination),
                          POLYGON('ICRS', {self.corners_str})) = 1'''
-            
+
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-            results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet', 
+            if not os.path.exists(data_dir + f'/{euclid_survey}'):
+                os.mkdir(data_dir + f'/{euclid_survey}')
+            results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet',
                                    format='parquet', overwrite = True)
         return results_table
-        
+
 # I don't know if I'll want to do a patch class to make these smaller than tract
 class Patch(Tract):
     def __init__(self, patch_num):

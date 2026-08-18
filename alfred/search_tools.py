@@ -1,5 +1,5 @@
 import sys
-sys.path.append("../") #has to be run in same directory rn
+#sys.path.append("../") #has to be run in same directory rn
 import simple_adl.simple_adl.isochrone as isochrone
 import simple_adl.simple_adl.coordinate_tools as coordinate_tools
 from alfred import plotting_functions
@@ -13,7 +13,8 @@ import os
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     #assuming that it's cool that the whole github repo is considered "home"
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'])
+    where = cfg['setup']['where']
+    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
     pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
     #external data is gonna be in a directory above - subject to change
     data_dir = os.path.expandvars(cfg['setup']['data_dir'])
