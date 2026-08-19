@@ -9,7 +9,7 @@ from alfred import utils
 #first need to load in the module I need
 #Goes up a directory to get the updated astroquery
 #sys.path.append(os.path.abspath('../..'))
-from astroquery_updated.esa.euclid import Euclid
+from external.astroquery_updated.esa.euclid import Euclid
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 or 10?
 
