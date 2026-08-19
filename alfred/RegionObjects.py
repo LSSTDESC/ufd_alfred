@@ -15,11 +15,11 @@ from external.astroquery_updated.esa.euclid import Euclid
 
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+    where = cfg['setup']['where']
     survey = cfg['survey']
     skymap = cfg[survey]['skymap']
-    repo_config = cfg[survey]['repo_config']
-    collection = cfg[survey]['collection']
-    where = cfg['setup']['where']
+    repo_config = cfg[survey]['repo_config'][where]
+    collection = cfg[survey]['collection'][where]
     data_dir = os.path.join(os.path.expandvars(cfg['setup']['home_dir'][where]), cfg['setup']['data_dir'])
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
