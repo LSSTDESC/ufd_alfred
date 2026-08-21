@@ -28,7 +28,7 @@ with open('config.yaml', 'r') as ymlfile:
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
 
-
+#~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
@@ -52,107 +52,116 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     if save == True:
         plt.savefig(plots_dir + f'/isochrones/{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}.png')
 
-
-#to do: fix this
-def match_validation_plots(merged_df, matches_lsst, matches_euclid, 
+#~~~~~~~~~~START MATCH VERIFICATION FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches_lsst, matches_euclid, 
                            unmatched_lsst, unmatched_euclid, 
                            lsst_table, euclid_field, ds):
-    ## Match Verification
-        b = 60
-        #1D histogram of matches and not matches
-        fig, ax = plt.subplots(1,1, figsize=(13,5))
-        match_vis_mag = flux2mag(matches_euclid['FLUX_VIS_2FWHM_APER']*(10**3))
-        unmatch_vis_mag = flux2mag(unmatched_euclid['FLUX_VIS_2FWHM_APER']*(10**3))
-        total_vis_mag = flux2mag(euclid_field['FLUX_VIS_2FWHM_APER']*(10**3))
-        plt.hist(match_vis_mag, bins = b, histtype = 'step', color='b', label = 'Matched Euclid Sources')
-        plt.hist(unmatch_vis_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched Euclid Sources')
-        plt.hist(total_vis_mag, bins = b, histtype = 'step', color='k', label = 'Total Euclid Sources')
-        plt.xlabel('FLUX_VIS_2FWHM_APER mag')
-        plt.xlim(16,36)
-        plt.ylabel('Number counts')
-        plt.yscale('log')
-        plt.title(f'Tract {tract}: Euclid Source Match/Unmatch')
-        plt.legend()
-        plt.show()
-        
-        match_i_mag = flux2mag(matches_lsst['i_psfFlux'])
-        unmatch_i_mag = flux2mag(unmatched_lsst['i_psfFlux'])
-        total_i_mag = flux2mag(lsst_datafile['i_psfFlux'])
-        fig, ax = plt.subplots(1,1, figsize=(13,5))
-        plt.hist(match_i_mag, bins = b, histtype = 'step', color='c', label = 'Matched LSST Sources')
-        plt.hist(unmatch_i_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched LSST Sources')
-        plt.hist(total_i_mag, bins = b, histtype = 'step', color='k', label = 'Total LSST Sources')
-        plt.xlabel('i_psfFlux mag')
-        plt.xlim(16,36)
-        plt.ylabel('Number counts')
-        plt.yscale('log')
-        plt.title(f'Tract {tract}: LSST Source Match/Unmatch')
-        plt.legend()
-        plt.show()
+    # 1D histogram of matches and not matches
+        # from Euclid side
+    fig, ax = plt.subplots(1,1, figsize=(13,5))
+    match_vis_mag = utils.flux2mag(matches_euclid['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
+    unmatch_vis_mag = utils.flux2mag(unmatched_euclid['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
+    total_vis_mag = utils.flux2mag(euclid_field['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
+    b = 60
+    plt.hist(match_vis_mag, bins = b, histtype = 'step', color='b', label = 'Matched Euclid Sources')
+    plt.hist(unmatch_vis_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched Euclid Sources')
+    plt.hist(total_vis_mag, bins = b, histtype = 'step', color='k', label = 'Total Euclid Sources')
+    plt.xlabel('flux_vis_2fwhm_aper mag')
+    plt.xlim(16, 36)
+    plt.ylabel('Number counts')
+    plt.yscale('log')
+    plt.title(f'Tract {tract}: Euclid {euclid_survey} Source Match/Unmatch')
+    plt.legend()
+    plt.savefig(plots_dir + '/merged_verification/' + 'euclidmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.show()
+    
+        # from LSST side
+    match_i_mag = utils.flux2mag(matches_lsst['i_psfFlux'])
+    unmatch_i_mag = utils.flux2mag(unmatched_lsst['i_psfFlux'])
+    total_i_mag = utils.flux2mag(lsst_table['i_psfFlux'])
+    fig, ax = plt.subplots(1,1, figsize=(13,5))
+    plt.hist(match_i_mag, bins = b, histtype = 'step', color='c', label = 'Matched LSST Sources')
+    plt.hist(unmatch_i_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched LSST Sources')
+    plt.hist(total_i_mag, bins = b, histtype = 'step', color='k', label = 'Total LSST Sources')
+    plt.xlabel('i_psfFlux mag')
+    plt.xlim(16,36)
+    plt.ylabel('Number counts')
+    plt.yscale('log')
+    plt.title(f'Tract {tract}: LSST {lsst_survey} Source Match/Unmatch')
+    plt.legend()
+    plt.savefig(plots_dir + '/merged_verification/' + 'lsstmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.show()
 
-        #2D histogram of matches in Euclid and LSST, does it look the same?
-        fig, ax = plt.subplots(1,2, figsize=(13,5))
-        _, _, _, im = ax[0].hist2d(matches_euclid['RIGHT_ASCENSION'], matches_euclid['DECLINATION'], bins=100)
-        plt.colorbar(im, ax=ax[0])
-        ax[0].set(title = f'Tract {tract}: Matches in Euclid', ylabel = "Dec (deg)", xlabel = "RA (deg)")
-        ax[0].invert_xaxis()
-        _, _, _, im = ax[1].hist2d(matches_lsst['coord_ra'], matches_lsst['coord_dec'], bins=100)
-        plt.colorbar(im, ax=ax[1])
-        ax[1].set(title = f'Tract {tract}: Matches in LSST', ylabel = "Dec (deg)", xlabel = "RA (deg)")
-        ax[1].invert_xaxis()
-        plt.show()
+    # 2D histogram of matches in Euclid and LSST, does it look the same?
+    fig, ax = plt.subplots(1,2, figsize=(13,5))
+    _, _, _, im = ax[0].hist2d(matches_euclid['right_ascension'], matches_euclid['declination'], bins=100)
+    plt.colorbar(im, ax=ax[0])
+    ax[0].set(title = f'Tract {tract}: Matches in Euclid', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+    ax[0].invert_xaxis()
+    _, _, _, im = ax[1].hist2d(matches_lsst['coord_ra'], matches_lsst['coord_dec'], bins=100)
+    plt.colorbar(im, ax=ax[1])
+    ax[1].set(title = f'Tract {tract}: Matches in LSST', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+    ax[1].invert_xaxis()
+    plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.show()
 
-        '''
-        #histogram of separation
-        ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
-        #I forced in the function that matches would be <1"
-        plt.hist(ds, histtype='step', range=(0,1))
-        plt.xlabel('separation [arcsec]')
-        plt.title(f'Tract {tract}: Matched Source Separation')
-        plt.tight_layout()
-        plt.show()
+    '''
+    #histogram of separation
+    ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
+    #I forced in the function that matches would be <1"
+    plt.hist(ds, histtype='step', range=(0,1))
+    plt.xlabel('separation [arcsec]')
+    plt.title(f'Tract {tract}: Matched Source Separation')
+    plt.tight_layout()
+    plt.show()
 
-        #checking that dec and DECLINATION relation is slope of 1
-        plt.scatter(merged_df['coord_dec'],merged_df['DECLINATION'],)
-        '''
-        i_mag = flux2mag(lsst_datafile['i_psfFlux'])
-        vis_mag = flux2mag(euclid_field['FLUX_VIS_PSF']*10**3)
-        
-        print(len(i_mag))
-        
-        lsst_datafile1 = lsst_datafile #[(i_mag < 22)]
-        euclid_field1 = euclid_field #[(vis_mag < 22)]
-        
-        plt.scatter(euclid_field1['RIGHT_ASCENSION'], euclid_field1['DECLINATION'], 
-                    marker = '+', label = 'Euclid Sources', #c = flux2mag(euclid_field1['FLUX_VIS_PSF']*10**3), 
-                   )
-        plt.scatter(lsst_datafile1['coord_ra'], lsst_datafile1['coord_dec'], 
-                    marker = 'x', label = 'LSST Sources', #c = flux2mag(lsst_datafile1['i_psfFlux']),
-                   )
-        plt.xlim(59.85, 59.84)
-        plt.xlabel('RA (deg)')
-        plt.ylim(-48.55,-48.54)
-        plt.ylabel('DEC (deg)')
-        #plt.colorbar()
-        plt.legend()
-        plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
-        plt.show()
-        
-        ra_diff = (merged_df['RIGHT_ASCENSION'] - merged_df['coord_ra'])*3600
-        dec_diff = (merged_df['DECLINATION'] - merged_df['coord_dec'])*3600
-        plt.hist(ra_diff, bins = 100)
-        plt.title('Merged Catalog RA difference')
-        plt.xlabel('Euclid RA - LSST RA (arcsec)')
-        plt.xlim(-1,1)
-        plt.show()
-        
-        plt.hist(dec_diff, bins = 100)
-        plt.xlim(-0.5,0.5)
-        plt.xlabel('Euclid DEC - LSST DEC (arcsec)')
-        plt.title('Merged Catalog DEC difference')
-        plt.show()
-    #save to merged_verification
+    #checking that dec and DECLINATION relation is slope of 1
+    plt.scatter(merged_df['coord_dec'],merged_df['DECLINATION'],)
+    '''
+    
+    # 2D scatter of matches in Euclid and LSST, do they overlap?
+    i_mag = utils.flux2mag(lsst_table['i_psfFlux'])
+    vis_mag = utils.flux2mag(euclid_field['FLUX_VIS_PSF'.lower()]*10**3)
+    
+    print(len(i_mag))
+    
+    lsst = lsst_table #[(i_mag < 22)]
+    euclid = euclid_field #[(vis_mag < 22)]
+    
+    plt.scatter(euclid['right_ascension'], euclid['declination'], 
+                marker = '+', label = 'Euclid Sources', #c = utils.flux2mag(euclid['FLUX_VIS_PSF']*10**3), 
+               )
+    plt.scatter(lsst['coord_ra'], lsst['coord_dec'], 
+                marker = 'x', label = 'LSST Sources', #c = utils.flux2mag(lsst['i_psfFlux']),
+               )
+    plt.xlim(59.85, 59.84)
+    plt.xlabel('RA (deg)')
+    plt.ylim(-48.55,-48.54)
+    plt.ylabel('DEC (deg)')
+    #plt.colorbar()
+    plt.legend()
+    plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
+    plt.savefig(plots_dir + '/merged_verification/' + '2dscatter_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.show()
+    
+    ra_diff = (merged_df['right_ascension'] - merged_df['coord_ra'])*3600
+    dec_diff = (merged_df['declination'] - merged_df['coord_dec'])*3600
+    plt.hist(ra_diff, bins = 100)
+    plt.title('Merged Catalog RA difference')
+    plt.xlabel('Euclid RA - LSST RA (arcsec)')
+    plt.xlim(-1,1)
+    plt.savefig(plots_dir + '/merged_verification/' + 'radiff_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.show()
+    
+    plt.hist(dec_diff, bins = 100)
+    plt.xlim(-0.5,0.5)
+    plt.xlabel('Euclid DEC - LSST DEC (arcsec)')
+    plt.title('Merged Catalog DEC difference')
+    plt.savefig(plots_dir + '/merged_verification/' + 'decdiff_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.show()
 
+
+#~~~~~~~~~~START COLOR-MAG FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def color_magnitude(df, band1, band2,
                     color_data, color_label,
                     selection_label, title,
@@ -212,8 +221,8 @@ def color_magnitude(df, band1, band2,
         fig, axes = plt.subplots(1,1, figsize=(7,5))
         ax = axes
 
-    band1_mag = flux2mag(df[f'{band1}_psfFlux'])
-    band2_mag = flux2mag(df[f'{band2}_psfFlux'])
+    band1_mag = utils.flux2mag(df[f'{band1}_psfFlux'])
+    band2_mag = utils.flux2mag(df[f'{band2}_psfFlux'])
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
@@ -251,7 +260,7 @@ def color_magnitude(df, band1, band2,
                 filename = title
             plt.savefig(plots_path + f'/colormag/{filename}.png')
 
-
+#~~~~~~~~~~START COLOR-COLOR FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def color_color(band_list,
                 color_data, color_label,
                 selection_label, title,
@@ -353,8 +362,7 @@ def color_color(band_list,
                 filename = title
             plt.savefig(plots_path + f'/colorcolor/{filename}.png')
 
-#----
-
+#~~~~~~~~~~START STAR-GAL MORPHOLOGY FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def star_gal_sep(df, separator,
                  color_data, color_label,
                  selection_label, title, colors = 'viridis_r',
@@ -415,15 +423,15 @@ def star_gal_sep(df, separator,
         ax = axes
 
     # x-axis data
-    i_mag = flux2mag(df['i_psfFlux'])
+    i_mag = utils.flux2mag(df['i_psfFlux'])
     # y-axis data depends on which morphology you want to demonstrate
     #  rubin morphologies, special because they requires operations:
     if separator == 'i psf - cmodel':
-        i_mag_cmodel = flux2mag(df["i_cModelFlux"])
+        i_mag_cmodel = utils.flux2mag(df["i_cModelFlux"])
         y = i_mag - i_mag_cmodel
         y_label = f'LSST i_psfFlux - i_cModelFlux'
     elif separator == 'i psf / cmodel':
-        i_mag_cmodel = flux2mag(df["i_cModelFlux"])
+        i_mag_cmodel = utils.flux2mag(df["i_cModelFlux"])
         y = i_mag / i_mag_cmodel
         y_label = f'LSST i_psfFlux / i_cModelFlux'
     #  otherwise I'm assuming it's just using a Euclid separator

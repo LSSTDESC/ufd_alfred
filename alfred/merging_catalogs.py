@@ -97,9 +97,10 @@ def merge_catalogs(lsst_table, euclid_table, tract, preload = True, validation_n
                        format='parquet', overwrite = True)
 
     if validation_needed==True:
-        plotting_functions.match_validation_plots(merged_table, matches_lsst, matches_euclid,
-                               unmatched_lsst, unmatched_euclid,
-                               lsst_table, euclid_field, ds)
+        plotting_functions.match_validation_plots(tract, survey, euclid_survey, 
+                                                  merged_table, matches_lsst, matches_euclid,
+                                                  unmatched_lsst, unmatched_euclid,
+                                                  lsst_table, euclid_field, ds)
     del matches_lsst, matches_euclid, unmatched_lsst, unmatched_euclid, lsst_table, euclid_field, ds
     gc.collect()
     return merged_table
