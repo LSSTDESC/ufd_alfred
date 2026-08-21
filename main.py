@@ -96,7 +96,31 @@ colorcolor_mask = masks_and_filters.niroptical_color_stars(merged_data)
 morphology_mask = masks_and_filters.Zerjal_stars(merged_data)
 morphncolor_mask = colorcolor_mask & morphology_mask
 # no one cared who I was til I put on the mask
-stellar_catalog = merged_data.apply_mask(morphncolor_mask)
+stars = merged_data.apply_mask(morphncolor_mask)
+
+## Some S-G validation plots
+plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
+                                   'c',
+                                   f'''g vs g-r of {stars.lsst_survey} and {stars.euclid_survey} stars 
+                                   in tract {stars.tract}''',
+                                   histogram = False,
+                                   selection_label = 'Zerjal morphology + colorcolor cut',
+                                   save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+plotting_functions.color_color([('g', stars.g_mag),('r', stars.r_mag),('r', stars.r_mag),('i', stars.i_mag)],
+                               None, 
+                               f'''g-r vs r-i of {stars.lsst_survey} and {stars.euclid_survey} stars in tract
+                               {stars.tract}''',
+                               histogram = True, 
+                               x_lim = (0,2), y_lim = (-1,2),
+                               selection_label = 'Zerjal morphology + colorcolor cut',
+                               save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 'Euclid mumax_minus_mag',
+                                merged_data.pointlikeprob, 
+                                f'''morphology separation of of {stars.lsst_survey} and {stars.euclid_survey} stars
+                                in tract {stars.tract}''', 
+                                histogram = True,
+                                save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+print('S-G plots ran and saved')
 
 ## Isochrone Search
 '''
@@ -107,7 +131,7 @@ nonans_stellar_catalog = stellar_catalog.apply_mask(nonans_mask)
 distance = 300
 isocut_stars_eachdistance = []
 #for distance in distances:
-isochrone_stars = search_tools.isochrone_search(stellar_catalog, distance, graph=True, save=True)
+isochrone_stars = search_tools.isochrone_search(stars, distance, graph=True, save=True)
 #    isocut_stars_eachdistance.append(isochrone_stars)
 isocut_stars_eachdistance_arr = np.array(isocut_stars_eachdistance)
 

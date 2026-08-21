@@ -30,6 +30,21 @@ with open('config.yaml', 'r') as ymlfile:
 
 #~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
+    '''
+    Plots a g v g-r CMD with isochrone line on top
+
+    Parameters
+    ----------
+    iso : Isochrone object
+    distance_modulus : float, converted from distance using ugali coordinate tools
+    uncut_data : Table or other dataframe type, all the data without an isochrone cut
+    cut_data : Table or other dataframe type, data with isochrone cut applied
+
+    Returns
+    -------
+    Pretty plot, saves to plots_dir/isochrones/{tract}_{lsst_survey}_{euclid_survey}.png
+    '''
+    
     fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
     ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = f'Tract: {uncut_data.tract}, {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data')
@@ -48,14 +63,35 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
                label = 'After cut')
     ax.legend()
 
-    plt.show()
     if save == True:
+        if not os.path.exists(plots_dir + f'/isochrones'):
+            os.mkdir(plots_dir + f'/isochrones')
         plt.savefig(plots_dir + f'/isochrones/{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}.png')
+    plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_lsst, unmatched_lsst, lsst_table, tract, lsst_survey, euclid_survey):
-    # 1D histogram of matches and not matches
-        # from Euclid side
+    '''
+    Plots 2 one-dimensional histograms of total sources, matched sources, and unmatched sources for Euclid and LSST
+
+    Parameters - all of which come from the merging_catalogs function
+    ----------
+    matches_euclid, unmatched_euclid : numpy arrays of the matched and unmatched sources from Euclid
+    euclid_field : Table or other dataframe type, all Euclid data from that area
+    matches_lsst, unmatched_lsst : numpy arrays of the matched and unmatched sources from LSST
+    lsst_table : Table or other dataframe type, all LSST data from that area 
+    tract : int, tract these datasets are querying
+    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
+    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+
+    Returns
+    --------
+    2 pretty plots
+    1 saves to plots_dir/merged_verification/euclidmatches_{tract}_{lsst_survey}_{euclid_survey}.png
+    Other saves to plots_dir/merged_verification/lsstmatches_{tract}_{lsst_survey}_{euclid_survey}.png
+    '''
+    
+    # from Euclid side
     fig, ax = plt.subplots(1,1, figsize=(13,5))
     match_vis_mag = utils.flux2mag(matches_euclid['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
     unmatch_vis_mag = utils.flux2mag(unmatched_euclid['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
@@ -73,7 +109,7 @@ def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_ls
     plt.savefig(plots_dir + '/merged_verification/' + 'euclidmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
     plt.close()
     
-        # from LSST side
+    # from LSST side
     match_i_mag = utils.flux2mag(matches_lsst['i_psfFlux'])
     unmatch_i_mag = utils.flux2mag(unmatched_lsst['i_psfFlux'])
     total_i_mag = utils.flux2mag(lsst_table['i_psfFlux'])
@@ -91,7 +127,22 @@ def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_ls
     plt.close()
 
 def twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_survey):
-    # 2D histogram of matches in Euclid and LSST, does it look the same?
+    '''
+    Plots 2 two-dimensional histograms of matched sources for Euclid and LSST
+
+    Parameters - all of which come from the merging_catalogs function
+    ----------
+    matches_euclid, unmatched_euclid : numpy arrays of the matched and unmatched sources from Euclid
+    matches_lsst, unmatched_lsst : numpy arrays of the matched and unmatched sources from LSST
+    tract : int, tract these datasets are querying
+    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
+    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+
+    Returns
+    --------
+    Pretty plot with 2 subplots (one side is the matches in Euclid, other is the matches in LSST)
+    Saves to plots_dir/merged_verification/2dhist_{tract}_{lsst_survey}_{euclid_survey}.png
+    '''
     fig, ax = plt.subplots(1,2, figsize=(13,5))
     _, _, _, im = ax[0].hist2d(matches_euclid['right_ascension'], matches_euclid['declination'], bins=100)
     plt.colorbar(im, ax=ax[0])
@@ -106,17 +157,20 @@ def twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_s
 
 def source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_survey): 
     '''
-    #histogram of separation
-    ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
-    #I forced in the function that matches would be <1"
-    plt.hist(ds, histtype='step', range=(0,1))
-    plt.xlabel('separation [arcsec]')
-    plt.title(f'Tract {tract}: Matched Source Separation')
-    plt.tight_layout()
-    plt.show()
+    Plots 2-D scatterplot of where all the Euclid and LSST coordinates are, within 0.01x0.01 deg box
 
-    #checking that dec and DECLINATION relation is slope of 1
-    plt.scatter(merged_df['coord_dec'],merged_df['DECLINATION'],)
+    Parameters - all of which come from the merging_catalogs function
+    ----------
+    euclid_field : Table or other dataframe type, all Euclid data from that area
+    lsst_table : Table or other dataframe type, all LSST data from that area 
+    tract : int, tract these datasets are querying
+    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
+    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+
+    Returns
+    --------
+    Pretty plot
+    Saves to plots_dir/merged_verification/2dscatter_{tract}_{lsst_survey}_{euclid_survey}.png
     '''
     #fig, ax = plt.subplots(1,1, figsize=(7,5))
     # 2D scatter of matches in Euclid and LSST, do they overlap?
@@ -143,8 +197,35 @@ def source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_surv
     plt.close()
 
 def coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey):
+    '''
+    Plots 2 one-dimensional histograms of the RA and Dec differences (Euclid - LSST for both)
+
+    Parameters - all of which come from the merging_catalogs function
+    ----------
+    merged_df : Table or other dataframe type, merged catalog (both Euclid and LSST data)
+    tract : int, tract these datasets are querying
+    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
+    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+
+    Returns
+    --------
+    2 pretty plots
+    Saves to plots_dir/merged_verification/{radiff or decdiff}_{tract}_{lsst_survey}_{euclid_survey}.png
+    '''
+    #commented out version of this below
+    '''
+    #histogram of separation
+    ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
+    #I forced in the function that matches would be <1"
+    plt.hist(ds, histtype='step', range=(0,1))
+    plt.xlabel('separation [arcsec]')
+    plt.title(f'Tract {tract}: Matched Source Separation')
+    plt.tight_layout()
+    plt.show()
+    '''
     ra_diff = (merged_df['right_ascension'] - merged_df['coord_ra'])*3600
     dec_diff = (merged_df['declination'] - merged_df['coord_dec'])*3600
+    
     plt.hist(ra_diff, bins = 100)
     plt.title('Merged Catalog RA difference')
     plt.xlabel('Euclid RA - LSST RA (arcsec)')
@@ -162,8 +243,32 @@ def coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey):
 def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches_lsst, matches_euclid, 
                            unmatched_lsst, unmatched_euclid, 
                            lsst_table, euclid_field, ds):
-    
-    oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_lsst, unmatched_lsst, lsst_table, tract, lsst_survey, euclid_survey)
+    '''
+    All the outputs from the merging_catalogs function going into different validation plots
+
+    Parameters - all of which come from the merging_catalogs function
+    ----------
+    tract : int, tract these datasets are querying
+    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
+    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+    merged_df : Table or other dataframe type, merged catalog (both Euclid and LSST data)
+    matches_euclid, unmatched_euclid : numpy arrays of the matched and unmatched sources from Euclid
+    matches_lsst, unmatched_lsst : numpy arrays of the matched and unmatched sources from LSST
+    lsst_table : Table or other dataframe type, all LSST data from that area 
+    euclid_field : Table or other dataframe type, all Euclid data from that area
+    ds : degree separation of each source, generated by ugali match function
+
+    Returns
+    --------
+    Bunch of pretty plots
+    Saves to plots_dir/merged_verification/
+    '''
+    if not os.path.exists(plots_dir + f'/merged_verification'):
+        os.mkdir(plots_dir + f'/merged_verification')
+        
+    oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, 
+                      matches_lsst, unmatched_lsst, lsst_table, 
+                      tract, lsst_survey, euclid_survey)
     twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_survey)
     source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_survey)
     coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey)
@@ -171,36 +276,39 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
 
 
 #~~~~~~~~~~START COLOR-MAG FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def color_magnitude(df, band1, band2,
-                    color_data, color_label,
-                    selection_label, title,
+def color_magnitude(band1_mag, band1_str,
+                    band2_mag, band2_str,
+                    color_data, title,
+                    color_label = '', selection_label = '_nolegend',
                     colors = 'viridis',
                     histogram = False, ax = None,
                     colorbar_limits = (0,1),
                     x_lim = (-1, 4), y_lim = (30, 18),
                     save = False, filename = None):
-
-    # NOTE: not generalized yet, ONLY plots LSST bands
     """
     Plots color-magnitude diagram, band1 vs band1-band2
 
     Parameters
     ----------
-    df : Astropy table, Pandas dataframe, or structured Numpy array
-        Data structure of objects to plot
-    band1 : string
-        LSST photometry band to be plotted on y-axis
-        function wil plot {band}_psfFlux mag
-    band2 : string
-        LSST photometry band for the x-axis
-        function wil plot {band}_psfFlux mag
+    band1_mag : array or column
+        Band magnitude to be plotted on y-axis
+    band1_str : string
+        Label of band1
+    band2_mag : array or column
+        Band magnitude to be subtracted for the x-axis
+    band2_str : string
+        Label of band2
     color_data : data column OR None
         If plot is to be scatterplot or contour, then should be data for the mapping
         If plot is to be histogram, then None
-    color_label : string
-        Colorbar label
     title : string
         Title of plot/subplot
+    color_label (optional) : string, default ''
+        Colorbar label
+        If color_data is None, color_label won't be used
+    selection_label (optional) : string, default '_nolegend'
+        Label for legend if desired to annotate which selection was chosen for this plot
+        If kept _nolegend, won't display a legend
     colors (optional) : string, default 'viridis'
         Color scheme to use
     histogram (optional) : boolean, default False
@@ -223,15 +331,13 @@ def color_magnitude(df, band1, band2,
 
     Returns
     -------
-    Pretty plot
+    Pretty plot, saves to plots_dir/colormag/{filename}.png
     """
 
-    if ax == None:
+    if ax == None: #to allow me to have this as a subplot
         fig, axes = plt.subplots(1,1, figsize=(7,5))
         ax = axes
 
-    band1_mag = utils.flux2mag(df[f'{band1}_psfFlux'])
-    band2_mag = utils.flux2mag(df[f'{band2}_psfFlux'])
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
@@ -255,7 +361,7 @@ def color_magnitude(df, band1, band2,
                            label = selection_label)
 
         ax.set_title(title, pad=pad)
-        ax.set(xlabel = f"{band1} - {band2}", ylabel = f"{band1}", xlim = x_lim, ylim = y_lim)
+        ax.set(xlabel = f"{band1_str} - {band2_str}", ylabel = f"{band1_str}", xlim = x_lim, ylim = y_lim)
         # cleaning up, not displaying everything if not needed
         if selection_label[0] != '_':
             ax.legend()
@@ -264,15 +370,18 @@ def color_magnitude(df, band1, band2,
         plt.tight_layout()
 
         if save == True:
+            if not os.path.exists(plots_dir + f'/colormag'):
+                os.mkdir(plots_dir + f'/colormag')
             if filename is None:
                 title = title.replace(' ', '').replace('-', '_').lower()
                 filename = title
-            plt.savefig(plots_path + f'/colormag/{filename}.png')
+            plt.savefig(plots_dir + f'/colormag/{filename}.png')
+        plt.close()
 
 #~~~~~~~~~~START COLOR-COLOR FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def color_color(band_list,
-                color_data, color_label,
-                selection_label, title,
+                color_data, title,
+                color_label = '', selection_label = '_nolegend',
                 colors = 'viridis',
                 histogram = False, ax = None,
                 y_lim = None, x_lim = None,
@@ -288,12 +397,13 @@ def color_color(band_list,
     colors : data column OR None
         If plot is to be scatterplot or contour, then should be data for the mapping
         If plot is to be histogram, then None
-    color_label : str
-        Colorbar label
-    selection_label : str
-        Labels how the data was cut, to be displayed in legend
     title : str
         Plot title
+    color_label (optional) : str, default ''
+        Colorbar label. If colors is None, color_label won't be used
+    selection_label (optional) : str, default '_nolegend'
+        Labels how the data was cut, to be displayed in legend
+        If kept _nolegend, won't display a legend
     colors (optional) : str, default 'viridis'
         Color scheme to use
     histogram (optional) : boolean, default False
@@ -316,7 +426,7 @@ def color_color(band_list,
 
     Returns
     -------
-    Pretty plot
+    Pretty plot, saves to plots_dir/colorcolor/{filename}.png
     """
 
     if ax == None:
@@ -324,10 +434,12 @@ def color_color(band_list,
         ax = axes
 
     band_x1, band_x2, band_y1, band_y2 = band_list
-    x1_mag = band_x1[1]
-    x2_mag = band_x2[1]
-    y1_mag = band_y1[1]
-    y2_mag = band_y2[1]
+    #cleaning out nans because the hist2d doesn't like them
+    nanmask = (~np.isnan(band_x1[1])) & (~np.isnan(band_x2[1])) & (~np.isnan(band_y1[1])) & (~np.isnan(band_y2[1]))
+    x1_mag = band_x1[1][nanmask]
+    x2_mag = band_x2[1][nanmask]
+    y1_mag = band_y1[1][nanmask]
+    y2_mag = band_y2[1][nanmask]
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
@@ -335,7 +447,6 @@ def color_color(band_list,
             if color_data is None:
             # 2D histograms require colormap which is str type
                 ax.hist2d(x1_mag - x2_mag, y1_mag - y2_mag, bins=200,
-                          range = [[x_lim[0],x_lim[1]],[y_lim[0], y_lim[1]]],
                           cmin=1, cmap = colors, label = selection_label)
             # otherwise if color dimension is needed for data, it'll plot contours over scatter
             else:
@@ -357,7 +468,7 @@ def color_color(band_list,
         # cleaning up the place, not displayin/changing everything if not needed
         if selection_label[0] != '_':
             ax.legend()
-        if color_label is not None:
+        if color_label != '':
             plt.colorbar(_,label=color_label)
         if y_lim is not None:
             ax.set(ylim=y_lim)
@@ -366,17 +477,20 @@ def color_color(band_list,
         plt.tight_layout()
 
         if save == True:
+            if not os.path.exists(plots_dir + f'/colorcolor'):
+                os.mkdir(plots_dir + f'/colorcolor')
             if filename is None:
                 title = title.replace(' ', '').replace('-', '_').lower()
                 filename = title
-            plt.savefig(plots_path + f'/colorcolor/{filename}.png')
+            plt.savefig(plots_dir + f'/colorcolor/{filename}.png')
 
 #~~~~~~~~~~START STAR-GAL MORPHOLOGY FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def star_gal_sep(df, separator,
-                 color_data, color_label,
-                 selection_label, title, colors = 'viridis_r',
+def star_gal_sep(xax_mag, yax_sep, y_label,
+                 color_data, title, 
+                 colors = 'viridis_r', x_label = 'LSST i mag', 
+                 selection_label = '_nolegend', color_label = None,
                  histogram = False, ax = None, line_plt = None,
-                 colorbar_limits = (0,1), y_lim = (-0.1, 0.6), x_lim = (18,28),
+                 colorbar_limits = (0,1), y_lim = None, x_lim = (18,28),
                  save = False, filename = None):
     '''
     Plots the morphology across magnitudes to show star-galaxy classifiers
@@ -384,25 +498,28 @@ def star_gal_sep(df, separator,
 
     Parameters
     ----------
-    df : Astropy table, Pandas dataframe, or structured Numpy array
-        Data structure of objects to plot
-    separator : str
-        Separation parameter to plot on the y-axis
-        Generally assumed to be a Euclid column title
-        LSST i psf - cmodel or i psf / cmodel are specially-handled cases
+    xax_mag : array or column
+        Data for the x-axis, typically an i magnitude
+        Assumed to be LSST i mag; if not, change x_label
+    yax_sep : array or column
+        Data for the y-axis, some morphology measurement
+    y_label : string
+        Descriptor of the morphology measurement to label y-axis
     colors : data column OR None
         If plot is to be scatterplot or contour, then should be data for the mapping
         If plot is to be histogram, then None
-    color_label : str
-        Colorbar label
-        If None, won't display a colorbar
-    selection_label : str
-        Description of how the data was cut to be displayed in legend
-        If _nolegend, won't display a legend
     title : str
         Plot title
     colors (optional) : str, default 'viridis_r'
         Color scheme to use
+    x_label : str, default 'LSST i mag'
+        Descriptor to label x-axis
+    selection_label (optional) : str, default '_nolegend'
+        Description of how the data was cut to be displayed in legend
+        If kept _nolegend, won't display a legend
+    color_label (optional) : str, default None
+        Colorbar label
+        If None, won't display a colorbar
     histogram (optional) : boolean, default False
         If True, will plot either histogram or contour (depending on colors type)
         If False, will plot scatterplot
@@ -411,7 +528,7 @@ def star_gal_sep(df, separator,
         If none, will set subplot axes (1,1)
     colorbar_limits (optional) : tuple, default (0, 1)
         Limits for the colorbar (changes vmin, vmax)
-    y_lim (optional) : tuple, default (-0.1, 0.6)
+    y_lim (optional) : tuple, default None
         Limits of y-axis
         Found it necessary sometimes to zoom and enhance on LSST selector
     x_lim (optional) : tuple, default (18,28)
@@ -425,28 +542,11 @@ def star_gal_sep(df, separator,
 
     Returns
     -------
-    Pretty plot
+    Pretty plot, saves to plots_dir/stargalsep/{filename}.png
     '''
     if ax == None:
         fig, axes = plt.subplots(1,1, figsize=(7,5))
         ax = axes
-
-    # x-axis data
-    i_mag = utils.flux2mag(df['i_psfFlux'])
-    # y-axis data depends on which morphology you want to demonstrate
-    #  rubin morphologies, special because they requires operations:
-    if separator == 'i psf - cmodel':
-        i_mag_cmodel = utils.flux2mag(df["i_cModelFlux"])
-        y = i_mag - i_mag_cmodel
-        y_label = f'LSST i_psfFlux - i_cModelFlux'
-    elif separator == 'i psf / cmodel':
-        i_mag_cmodel = utils.flux2mag(df["i_cModelFlux"])
-        y = i_mag / i_mag_cmodel
-        y_label = f'LSST i_psfFlux / i_cModelFlux'
-    #  otherwise I'm assuming it's just using a Euclid separator
-    else:
-        y = df[separator]
-        y_label = 'Euclid ' + separator
 
     # the code will start yelling about the colorbar and labels depending on how you plot it
     with warnings.catch_warnings():
@@ -456,26 +556,28 @@ def star_gal_sep(df, separator,
         if histogram == True:
             # 2D histograms require colormap which is str type
             if color_data is None:
-                ax.hist2d(i_mag, y, bins=200,
+                ax.hist2d(xax_mag, yax_sep, bins=200,
                           range = [[x_lim[0],x_lim[1]],[y_lim[0], y_lim[1]]],
                           cmin=1, cmap = colors, label = selection_label)
             # otherwise if color dimension is needed for data, it'll plot contours over scatter
             else:
-                _ = ax.scatter(i_mag, y,
+                _ = ax.scatter(xax_mag, yax_sep,
                                c = color_data, vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                                label = selection_label,
                                s = size, cmap = colors)
-                sns.kdeplot(x=i_mag, y=y, fill=False, color="k")
+                sns.kdeplot(x=xax_mag, y=yax_sep, fill=False, color="k")
         # normal scatter plot
         else:
-            _ = ax.scatter(i_mag, y,
+            _ = ax.scatter(xax_mag, yax_sep,
                            c = color_data, vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                            label = selection_label,
                            s = size, cmap = colors)
 
-        ax.set(xlabel = 'LSST i_psfFlux mag', ylabel = y_label, ylim = y_lim, xlim = x_lim)
+        ax.set(xlabel = x_label, ylabel = y_label, xlim = x_lim)
         ax.set_title(title, pad=pad) #title is separate so I can have the pad
         # cleaning up the place, not displaying everything if not needed
+        if y_lim is not None:
+            ax.set(ylim = y_lim)
         if selection_label[0] != '_':
             ax.legend()
         if line_plt is not None:
@@ -485,15 +587,17 @@ def star_gal_sep(df, separator,
         plt.tight_layout()
 
         if save == True:
+            if not os.path.exists(plots_dir + f'/stargalsep'):
+                os.mkdir(plots_dir + f'/stargalsep')
             if filename is None:
                 title.replace(' ', '').replace('-','_').lower()
                 filename = title
-            plt.savefig(plots_path + f'/stargalsep/{filename}.png')
+            plt.savefig(plots_dir + f'/stargalsep/{filename}.png')
 
 
 
 
-## ~~~~~ probably very outdated function ~~~~
+## ~~~~~ very outdated function trying to automate doing CMD subplots ~~~~
 def color_magnitude2(star_df, pltL_dict, pltR_dict, title = None, save = False, filename = None):
     """
     Plots 2 subplots of color-magnitude diagrams, band1 vs band1-band2

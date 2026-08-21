@@ -34,6 +34,16 @@ class LSSTData(Data):
         self.r_magerr = utils.fluxerr2magerr(data['r_psfFlux'], data['r_psfFluxErr'])
         self.i_magerr = utils.fluxerr2magerr(data['i_psfFlux'], data['i_psfFluxErr'])
         self.z_magerr = utils.fluxerr2magerr(data['z_psfFlux'], data['z_psfFluxErr'])
+
+    ## morphology
+    def band_psfmincmodel(band, self):
+        psf_flux = utils.flux2mag(self.data[f'{band}_psfFlux'])
+        cmodel_flux = utils.flux2mag(self.data[f'{band}_cModelFlux'])
+        return psf_flux - cmodel_flux
+    def band_psfdivcmodel(band, self):
+        psf_flux = utils.flux2mag(self.data[f'{band}_psfFlux'])
+        cmodel_flux = utils.flux2mag(self.data[f'{band}_cModelFlux'])
+        return psf_flux / cmodel_flux
         
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
