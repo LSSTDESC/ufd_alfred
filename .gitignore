@@ -4,4 +4,4 @@ external/
 usdf_pipeline_tests.ipynb
 nersc_pipeline_tests.ipynb
 euclid_data/
-plots/
+#plots/

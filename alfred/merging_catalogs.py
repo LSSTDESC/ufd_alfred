@@ -10,7 +10,7 @@ from astropy.table import Table, vstack, join
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 ?
 #sys.path.append(os.path.abspath('../'))
-from ugali.utils.projector import match
+from external.ugali.utils.projector import match
 ## function to create euclid + rubin datasets and register to the data registry on NERSC
 ## don't know where I want this to live quite yet
 

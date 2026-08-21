@@ -41,15 +41,16 @@ class Tract():
                                SkyMap.generateTract(tract).getCtrCoord().getDec().asDegrees()*u.deg, 
                                frame='icrs')
         self.center_SpherePoint = SkyMap.generateTract(tract).getCtrCoord()
-        ras = [SkyMap.getRaDecRange(tract)[0].asDegrees()*u.deg, SkyMap.getRaDecRange(tract)[1].asDegrees()*u.deg]
+        ras = sorted([SkyMap.getRaDecRange(tract)[0].asDegrees()*u.deg, 
+                      SkyMap.getRaDecRange(tract)[1].asDegrees()*u.deg])
         self.ra_range = ras
-        decs = [SkyMap.getRaDecRange(tract)[2].asDegrees()*u.deg, SkyMap.getRaDecRange(tract)[3].asDegrees()*u.deg]
+        decs = sorted([SkyMap.getRaDecRange(tract)[2].asDegrees()*u.deg, 
+                       SkyMap.getRaDecRange(tract)[3].asDegrees()*u.deg])
         self.dec_range = decs
-        self.corners = [SkyCoord(ra,dec,frame='icrs') for ra in ras for dec in decs]
+        self.corners = [SkyCoord(ra,decs[1],frame='icrs') for ra in ras] + [SkyCoord(ra,decs[0],frame='icrs') for ra in ras[::-1]]
         corners_str = ''
-        for ra in ras:
-            for dec in decs:
-                corners_str += f'{ra.value}, {dec.value}, '
+        for coord in self.corners:
+            corners_str += f'{coord.ra.value}, {coord.dec.value}, '
         self.corners_str = corners_str.removesuffix(', ')
         self.corners_Angle = SkyMap.getRaDecRange(tract)
 

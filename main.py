@@ -67,7 +67,7 @@ euclid_table = tract.euclid_query(euclid_INCOLS, preload = True)
 
 ## Merge Catalogs and Clean Up Memory
 merged_table = merging_catalogs.merge_catalogs(lsst_table, euclid_table, tract.tract, 
-                                               preload = False, validation_needed = True)
+                                               preload = True, validation_needed = True)
 merged_data_raw = DataObjects.LSSTnEuclidData(merged_table, survey, euclid_survey, tract.tract)
 del lsst_table, euclid_table, merged_table
 gc.collect()

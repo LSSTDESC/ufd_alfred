@@ -52,10 +52,8 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     if save == True:
         plt.savefig(plots_dir + f'/isochrones/{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}.png')
 
-#~~~~~~~~~~START MATCH VERIFICATION FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches_lsst, matches_euclid, 
-                           unmatched_lsst, unmatched_euclid, 
-                           lsst_table, euclid_field, ds):
+#~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_lsst, unmatched_lsst, lsst_table, tract, lsst_survey, euclid_survey):
     # 1D histogram of matches and not matches
         # from Euclid side
     fig, ax = plt.subplots(1,1, figsize=(13,5))
@@ -73,7 +71,7 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     plt.title(f'Tract {tract}: Euclid {euclid_survey} Source Match/Unmatch')
     plt.legend()
     plt.savefig(plots_dir + '/merged_verification/' + 'euclidmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.show()
+    plt.close()
     
         # from LSST side
     match_i_mag = utils.flux2mag(matches_lsst['i_psfFlux'])
@@ -90,8 +88,9 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     plt.title(f'Tract {tract}: LSST {lsst_survey} Source Match/Unmatch')
     plt.legend()
     plt.savefig(plots_dir + '/merged_verification/' + 'lsstmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.show()
+    plt.close()
 
+def twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_survey):
     # 2D histogram of matches in Euclid and LSST, does it look the same?
     fig, ax = plt.subplots(1,2, figsize=(13,5))
     _, _, _, im = ax[0].hist2d(matches_euclid['right_ascension'], matches_euclid['declination'], bins=100)
@@ -103,8 +102,9 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     ax[1].set(title = f'Tract {tract}: Matches in LSST', ylabel = "Dec (deg)", xlabel = "RA (deg)")
     ax[1].invert_xaxis()
     plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.show()
+    plt.close()
 
+def source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_survey): 
     '''
     #histogram of separation
     ds = ds * 3600 #ds is in degrees, want to plot in arcsecs
@@ -118,13 +118,11 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     #checking that dec and DECLINATION relation is slope of 1
     plt.scatter(merged_df['coord_dec'],merged_df['DECLINATION'],)
     '''
-    
+    #fig, ax = plt.subplots(1,1, figsize=(7,5))
     # 2D scatter of matches in Euclid and LSST, do they overlap?
     i_mag = utils.flux2mag(lsst_table['i_psfFlux'])
     vis_mag = utils.flux2mag(euclid_field['FLUX_VIS_PSF'.lower()]*10**3)
-    
-    print(len(i_mag))
-    
+        
     lsst = lsst_table #[(i_mag < 22)]
     euclid = euclid_field #[(vis_mag < 22)]
     
@@ -134,16 +132,17 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     plt.scatter(lsst['coord_ra'], lsst['coord_dec'], 
                 marker = 'x', label = 'LSST Sources', #c = utils.flux2mag(lsst['i_psfFlux']),
                )
-    plt.xlim(59.85, 59.84)
+    plt.xlim(np.min(lsst['coord_ra'])+0.01, np.min(lsst['coord_ra']))
     plt.xlabel('RA (deg)')
-    plt.ylim(-48.55,-48.54)
+    plt.ylim(np.min(lsst['coord_dec']),np.min(lsst['coord_dec'])+0.01)
     plt.ylabel('DEC (deg)')
     #plt.colorbar()
     plt.legend()
     plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
     plt.savefig(plots_dir + '/merged_verification/' + '2dscatter_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.show()
-    
+    plt.close()
+
+def coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey):
     ra_diff = (merged_df['right_ascension'] - merged_df['coord_ra'])*3600
     dec_diff = (merged_df['declination'] - merged_df['coord_dec'])*3600
     plt.hist(ra_diff, bins = 100)
@@ -151,14 +150,24 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     plt.xlabel('Euclid RA - LSST RA (arcsec)')
     plt.xlim(-1,1)
     plt.savefig(plots_dir + '/merged_verification/' + 'radiff_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.show()
+    plt.close()
     
     plt.hist(dec_diff, bins = 100)
     plt.xlim(-0.5,0.5)
     plt.xlabel('Euclid DEC - LSST DEC (arcsec)')
     plt.title('Merged Catalog DEC difference')
     plt.savefig(plots_dir + '/merged_verification/' + 'decdiff_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.show()
+    plt.close()
+
+def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches_lsst, matches_euclid, 
+                           unmatched_lsst, unmatched_euclid, 
+                           lsst_table, euclid_field, ds):
+    
+    oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_lsst, unmatched_lsst, lsst_table, tract, lsst_survey, euclid_survey)
+    twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_survey)
+    source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_survey)
+    coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey)
+    print('Match validation plots ran and saved')
 
 
 #~~~~~~~~~~START COLOR-MAG FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
