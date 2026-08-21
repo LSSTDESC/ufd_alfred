@@ -1,11 +1,11 @@
-## NEED TO TEST THE ATTRIBUTES ARE ASSIGNED CORRECTLY    
-    ## write new quality cuts functions - maybe not within the classes but just using the apply_mask
+## NEED TO TEST THE ATTRIBUTES ARE ASSIGNED CORRECTLY
+
 from alfred import utils
 
 class Data():
     def __init__(self, data):
         self.data = data
-        
+
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
