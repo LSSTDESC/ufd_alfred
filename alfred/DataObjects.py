@@ -1,5 +1,3 @@
-## NEED TO TEST THE ATTRIBUTES ARE ASSIGNED CORRECTLY
-
 from alfred import utils
 
 class Data():

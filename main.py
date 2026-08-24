@@ -5,7 +5,7 @@ import gc
 import numpy as np
 from astropy.coordinates import SkyCoord
 from lsst.daf.butler import Butler
-from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools, plotting_functions
+from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools, plotting_functions, mapmaking
 
 #-----------------------------------
 
@@ -136,4 +136,18 @@ isochrone_stars = search_tools.isochrone_search(stars, distance, graph=True, sav
 isocut_stars_eachdistance_arr = np.array(isocut_stars_eachdistance)
 
 ## get maps ready -- need fracdet
+#maybe put these functions as methods of region object
+full_map = mapmaking.euclid_fullmap('q1.vmpz_healpix_coverage', 'vis', 'coverage', preload=True)
+masked_map = mapmaking.match_map_polygon(fullmap, tract.corners)
+tract_map,fracdet_map = mapmaking.rubin_maps(butler, tract.tract, 
+                                             map_name = 'deepCoadd_psf_maglim_map_weighted_mean', band = 'i', 
+                                             nside=2048, 
+                                             save_plot=True, map_title = f'Tract {tract.tract} Rubin i MagLim Map')
+plotting_functions.map_plot(full_map, 'Full Euclid VIS Coverage Map', color_lims = (24,26), 
+         save = True, filename = 'full_coverage_vis_q1')
+plotting_functions.map_plot(masked_map, f'Tract {tract.tract} Euclid VIS Coverage Map', color_lims = (24,26), 
+         save = True, filename = f'{tract.tract}masked_coverage_vis_{euclid_survey}')
+plotting_functions.map_plot(tract_map, f'Tract {tract.tract} Rubin i MagLim Map', color_lims = (24,26), 
+         save = True, filename = f'{tract.tract}_maglim_i_{survey}')
+
 ## compute_char_density
