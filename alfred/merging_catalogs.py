@@ -4,7 +4,7 @@ import gc
 import sys
 import os
 import yaml
-from alfred import plotting_functions
+from alfred import utils, plotting_functions
 from astropy.table import Table, vstack, join
 #Goes up a directories to get the updated astroquery
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
@@ -19,7 +19,6 @@ with open('config.yaml', 'r') as ymlfile:
     #assuming that it's cool that the whole github repo is considered "home"
     where = cfg['setup']['where']
     home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
-    pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
     #external data is gonna be in a directory above - subject to change
     data_dir = os.path.join(home_dir, cfg['setup']['data_dir'])
     if not os.path.exists(data_dir):
@@ -30,28 +29,14 @@ with open('config.yaml', 'r') as ymlfile:
     survey = cfg['survey']
     euclid_survey = cfg['euclid_survey']
 
-# function to check if the data doesn't exist already and if I want to rewrite it
-def check_merge_data(tract, preload = True):
-    '''
-    preload = True means that I want to use the preloaded / saved data instead of querying again
-    '''
-    if not os.path.exists(data_dir + f'/merged/{tract}_{survey}_{euclid_survey}_merged.parquet'):
-        #merged data file doesn't exist yet
-        return True
-    else:
-        #merged data file DOES exist
-        if preload == True:
-            #I want to use the saved data, so don't remerge them
-            return False
-        else:
-            #I want to overwrite it for whatever reason, so remerge/save them
-            return True
 
-# function to add it to the data registry
+## INSERT function to add it to the data registry
 
 # then function to merge catalogs, starting and ending with above
 def merge_catalogs(lsst_table, euclid_table, tract, preload = True, validation_needed = False):
-    if not check_merge_data(tract, preload):
+    
+    # function to check if the data doesn't exist already and if I want to rewrite it
+    if not utils.check_if_query(data_dir + f'/merged/{tract}_{survey}_{euclid_survey}_merged.parquet', preload):
         print("Check tells me data exists and you don't want to remerge. Opening existing file now")
         return Table.read(data_dir + f'/merged/{tract}_{survey}_{euclid_survey}_merged.parquet')
     print('Check tells me to start the merge, starting now')

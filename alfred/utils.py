@@ -2,6 +2,23 @@ import numpy as np
 import pandas as pd
 import yaml
 
+# function to check if the data doesn't exist already and if I want to rewrite it
+def check_if_query(path, preload):
+    '''
+    preload = True means that I want to use the preloaded / saved data instead of querying again
+    '''
+    if not os.path.exists(path):
+        #merged data file doesn't exist yet
+        return True
+    else:
+        #merged data file DOES exist
+        if preload == True:
+            #I want to use the saved data, so don't remerge them
+            return False
+        else:
+            #I want to overwrite it for whatever reason, so remerge/save them
+            return True
+
 def flux2mag(flux):
     zeropoint = 31.4
     index = flux.index if hasattr(flux, 'index') else None

@@ -28,8 +28,28 @@ with open('config.yaml', 'r') as ymlfile:
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
 
+#~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
+    fig, ax = plt.subplots(figsize=(12, 8))
+    sp = skyproj.MollweideSkyproj(ax=ax)
+    sp.draw_hspmap(hsp_map, vmin = color_lims[0], vmax = color_lims[1])
+    
+    plt.title(title, pad=25)
+    plt.colorbar(shrink=0.5)
+
+    if save == True:
+        if not os.path.exists(plots_dir + f'/maps'):
+            os.mkdir(plots_dir + f'/maps')
+        if filename == '':
+            filename = title.lower.replace(' ','').replace('-','_').replace(',','_')
+        plt.savefig(plots_dir + f'/maps/{filename}.png')
+    
+    plt.close()
+
 #~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
+def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, 
+                   title = f'Tract: {uncut_data.tract}, {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data', 
+                   save = True, filename = ''):
     '''
     Plots a g v g-r CMD with isochrone line on top
 
@@ -39,6 +59,7 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     distance_modulus : float, converted from distance using ugali coordinate tools
     uncut_data : Table or other dataframe type, all the data without an isochrone cut
     cut_data : Table or other dataframe type, data with isochrone cut applied
+    title : string, title for the plot, the default is just generic tract and survey information
 
     Returns
     -------
@@ -47,7 +68,7 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     
     fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
-    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = f'Tract: {uncut_data.tract}, {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data')
+    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = title)
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
 
@@ -66,7 +87,9 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, save = True):
     if save == True:
         if not os.path.exists(plots_dir + f'/isochrones'):
             os.mkdir(plots_dir + f'/isochrones')
-        plt.savefig(plots_dir + f'/isochrones/{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}.png')
+        if filename == '':
+            filename = f'{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}'
+        plt.savefig(plots_dir + f'/isochrones/{filename}.png')
     plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -373,8 +396,7 @@ def color_magnitude(band1_mag, band1_str,
             if not os.path.exists(plots_dir + f'/colormag'):
                 os.mkdir(plots_dir + f'/colormag')
             if filename is None:
-                title = title.replace(' ', '').replace('-', '_').lower()
-                filename = title
+                filename = title.replace(' ', '').replace('-', '_').lower()
             plt.savefig(plots_dir + f'/colormag/{filename}.png')
         plt.close()
 
