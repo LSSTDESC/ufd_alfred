@@ -25,7 +25,20 @@ with open('config.yaml', 'r') as ymlfile:
     survey = cfg['survey']
     euclid_survey = cfg['euclid_survey']
 
-def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True, save=True):
+
+# def hotspot_search(): per tract
+# load in maps
+#iterate through distances
+    # isochrone search
+    # compute char density
+    # find peaks
+    # for each peak
+        # compute the local char density
+        # fit aperture
+    # save and return ra, dec, radius, distance, significance, and n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array (don't know what those are yet
+# idea: class for the peaks to save all this information
+
+def isochrone_search(band1, band2, distance, age=12.0, Z=0.0002, graph=True, save=True):
     '''
     I'm assuming stars_data is a LSSTData or LSSTnEuclidData object
     '''
@@ -38,15 +51,15 @@ def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True, save=T
           metallicity=Z,
           distance_modulus=distance_modulus,
           survey= 'mixed',
-          band_1= 'g',
-          band_2= 'r')
+          band_1= band1.str,
+          band_2= band2.str)
     
     #cut = cut_isochrone_path(star_data.g_mag, star_data.r_mag,
     #                         star_data.g_magerr, star_data.r_magerr,
     #                         iso, radius = 0.1)
     
-    cut = cut_isochrone_path(star_data.g_mag, star_data.r_mag,
-                             star_data.g_magerr, star_data.r_magerr,
+    cut = cut_isochrone_path(band1.mag, band2.mag,
+                             band1.magerr, band2.magerr,
                              iso, radius = 0.1)
     isochrone_stars = star_data.apply_mask(cut)
 
@@ -54,9 +67,8 @@ def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True, save=T
         plotting_functions.isochrone_plot(iso, distance_modulus,
                                           star_data, isochrone_stars,
                                           save=save)
-    
-    
-    return isochrone_stars
+
+return isochrone_stars
         
 #~~~~ Tools~~~~~~~~~~~~
 #Authors: Keith Bechtol, Sid Mau from the "simple" algorithm: https://github.com/DarkEnergySurvey/simple/tree/master
