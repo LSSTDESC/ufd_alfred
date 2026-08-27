@@ -26,19 +26,43 @@ with open('config.yaml', 'r') as ymlfile:
     euclid_survey = cfg['euclid_survey']
 
 
-# def hotspot_search(): per tract
-# load in maps
-#iterate through distances
-    # isochrone search
-    # compute char density
+def hotspot_search(region, mag_max = 26, nside = 256, fracdet = None, save_graphs=False):
+'''
+per tract but handles all the distances
+inputs:
+    region - has the stellar catalog and the ra/dec info
+    whether you want to save the graphs
+    nside - I don't know how to select an nside really. do i want it to be large or small??
+outputs:
+    peak attributes
+'''
+    # load in maps
+
+    #iterate over distances
+    distances = np.arange(200, 2000, 100)
+    peaks = []
+    for distance in distances:
+        # apply the isochrone cookie-cutter
+        isochrone_stars = search_tools.isochrone_search(region.data.stellar_catalog, 
+                                                        distance, age=12.0, Z=0.0002, 
+                                                        save_graph=save_graphs)
+        if len(isochrone_stars)==0:
+            peaks.append(np.nan)
+        #compute the density of just a small region, then compare it with the larger density
+        compute_char_density(nside, stars, region.center.ra.value, region.center.dec.value, mag_max, fracdet=fracdet)
+            #I don't know how this function works yet, how it assumes the regions are broken up
+            #what is ra_select, dec_select. should that be the center? should i move those across the tract/is it a smaller region and my tract is the local area?
+
+    
     # find peaks
     # for each peak
         # compute the local char density
         # fit aperture
     # save and return ra, dec, radius, distance, significance, and n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array (don't know what those are yet
 # idea: class for the peaks to save all this information
+mag_max = 26
 
-def isochrone_search(band1, band2, distance, age=12.0, Z=0.0002, graph=True, save=True):
+def isochrone_search(band1, band2, distance, age=12.0, Z=0.0002, save_graph=True):
     '''
     I'm assuming stars_data is a LSSTData or LSSTnEuclidData object
     '''
@@ -63,12 +87,12 @@ def isochrone_search(band1, band2, distance, age=12.0, Z=0.0002, graph=True, sav
                              iso, radius = 0.1)
     isochrone_stars = star_data.apply_mask(cut)
 
-    if graph==True:
+    if save_graph == True:
         plotting_functions.isochrone_plot(iso, distance_modulus,
                                           star_data, isochrone_stars,
-                                          save=save)
+                                          save=True)
 
-return isochrone_stars
+    return isochrone_stars
         
 #~~~~ Tools~~~~~~~~~~~~
 #Authors: Keith Bechtol, Sid Mau from the "simple" algorithm: https://github.com/DarkEnergySurvey/simple/tree/master
@@ -358,59 +382,59 @@ def fit_aperture(proj, distance_modulus, characteristic_density_local, x_peak, y
 
     index_peak = np.argmax(sig_array)
     r_peak = size_array[index_peak]
-    #if np.max(sig_array) >= 37.5:
-    #    r_peak = 0.5
-    n_obs_peak = n_obs_array[index_peak]
-    n_model_peak = n_model_array[index_peak]
-    n_obs_half_peak = np.sum(angsep_peak < (0.5 * r_peak))
-
-    # Compile resilts
-    print('Candidate: x_peak: {:12.3f}, y_peak: {:12.3f}, r_peak: {:12.3f}, sig: {:12.3f}, ra_peak: {:12.3f}, dec_peak: {:12.3f}'.format(x_peak, y_peak, r_peak, np.max(sig_array), ra_peak, dec_peak))
-    ra_peak_array.append(ra_peak)
-    dec_peak_array.append(dec_peak)
-    r_peak_array.append(r_peak)
-    #sig_peak_array.append(np.max(sig_array))
-    sig_peak_array.append(sig_array[index_peak])
-    distance_modulus_array.append(distance_modulus)
-    n_obs_peak_array.append(n_obs_peak)
-    n_obs_half_peak_array.append(n_obs_half_peak)
-    n_model_peak_array.append(n_model_peak)
-
-    return ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array
+    if np.max(sig_array) >= 37.5:
+        r_peak = 0.5
+        n_obs_peak = n_obs_array[index_peak]
+        n_model_peak = n_model_array[index_peak]
+        n_obs_half_peak = np.sum(angsep_peak < (0.5 * r_peak))
+    
+        # Compile resilts
+        print('Candidate: x_peak: {:12.3f}, y_peak: {:12.3f}, r_peak: {:12.3f}, sig: {:12.3f}, ra_peak: {:12.3f}, dec_peak: {:12.3f}'.format(x_peak, y_peak, r_peak, np.max(sig_array), ra_peak, dec_peak))
+        ra_peak_array.append(ra_peak)
+        dec_peak_array.append(dec_peak)
+        r_peak_array.append(r_peak)
+        #sig_peak_array.append(np.max(sig_array))
+        sig_peak_array.append(sig_array[index_peak])
+        distance_modulus_array.append(distance_modulus)
+        n_obs_peak_array.append(n_obs_peak)
+        n_obs_half_peak_array.append(n_obs_half_peak)
+        n_model_peak_array.append(n_model_peak)
+    
+        return ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array
     else:
         # Other cases
         index_transition = np.nonzero(isochrone.stage >= isochrone.hb_stage)[0][0] + 1    
 
-    mag_1_rgb = isochrone.mag_1[0: index_transition] + isochrone.distance_modulus
-    mag_2_rgb = isochrone.mag_2[0: index_transition] + isochrone.distance_modulus
+        mag_1_rgb = isochrone.mag_1[0: index_transition] + isochrone.distance_modulus
+        mag_2_rgb = isochrone.mag_2[0: index_transition] + isochrone.distance_modulus
+        
+        mag_1_rgb = mag_1_rgb[::-1]
+        mag_2_rgb = mag_2_rgb[::-1]
     
-    mag_1_rgb = mag_1_rgb[::-1]
-    mag_2_rgb = mag_2_rgb[::-1]
-
-    # Cut one way...
-    f_isochrone = scipy.interpolate.interp1d(mag_2_rgb, mag_1_rgb - mag_2_rgb, bounds_error=False, fill_value = 999.)
-    color_diff = np.fabs((g - r) - f_isochrone(r))
-    cut_2 = (color_diff < np.sqrt(radius**2 + r_err**2 + g_err**2))
-
-     # ...and now the other
-    f_isochrone = scipy.interpolate.interp1d(mag_1_rgb, mag_1_rgb - mag_2_rgb, bounds_error=False, fill_value = 999.)
-    color_diff = np.fabs((g - r) - f_isochrone(g))
-    cut_1 = (color_diff < np.sqrt(radius**2 + r_err**2 + g_err**2))
-
-    cut = np.logical_or(cut_1, cut_2)
-
-    #mag_bins = np.arange(17., 24.1, 0.1)
-    mag_bins = np.arange(17., mag_max+0.1, 0.1)
-    mag_centers = 0.5 * (mag_bins[1:] + mag_bins[0:-1])
-    magerr = np.tile(0., len(mag_centers))
-    for ii in range(0, len(mag_bins) - 1):
-        cut_mag_bin = (g > mag_bins[ii]) & (g < mag_bins[ii + 1])
-        magerr[ii] = np.median(np.sqrt(radius**2 + r_err[cut_mag_bin]**2 + g_err[cut_mag_bin]**2))
-
-    if return_all:
-        return cut, mag_centers[f_isochrone(mag_centers) < 100], (f_isochrone(mag_centers) + magerr)[f_isochrone(mag_centers) < 100], (f_isochrone(mag_centers) - magerr)[f_isochrone(mag_centers) < 100]
-    else:
-        return cut
+        # Cut one way...
+        f_isochrone = scipy.interpolate.interp1d(mag_2_rgb, mag_1_rgb - mag_2_rgb, bounds_error=False, fill_value = 999.)
+        color_diff = np.fabs((g - r) - f_isochrone(r))
+        cut_2 = (color_diff < np.sqrt(radius**2 + r_err**2 + g_err**2))
+    
+         # ...and now the other
+        f_isochrone = scipy.interpolate.interp1d(mag_1_rgb, mag_1_rgb - mag_2_rgb, bounds_error=False, fill_value = 999.)
+        color_diff = np.fabs((g - r) - f_isochrone(g))
+        cut_1 = (color_diff < np.sqrt(radius**2 + r_err**2 + g_err**2))
+    
+        cut = np.logical_or(cut_1, cut_2)
+    
+        #mag_bins = np.arange(17., 24.1, 0.1)
+        mag_bins = np.arange(17., mag_max+0.1, 0.1)
+        mag_centers = 0.5 * (mag_bins[1:] + mag_bins[0:-1])
+        magerr = np.tile(0., len(mag_centers))
+        for ii in range(0, len(mag_bins) - 1):
+            cut_mag_bin = (g > mag_bins[ii]) & (g < mag_bins[ii + 1])
+            magerr[ii] = np.median(np.sqrt(radius**2 + r_err[cut_mag_bin]**2 + g_err[cut_mag_bin]**2))
+    
+        if return_all:
+            return cut, mag_centers[f_isochrone(mag_centers) < 100], (f_isochrone(mag_centers) + magerr)[f_isochrone(mag_centers) < 100], (f_isochrone(mag_centers) - magerr)[f_isochrone(mag_centers) < 100]
+        else:
+            return cut
 
 
 def isochrone_search(star_data, distance, age=12.0, Z=0.0002, graph=True, save=True):

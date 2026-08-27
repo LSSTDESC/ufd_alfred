@@ -1,8 +1,8 @@
 setup : #user input
   where : 'nersc' #usdf or nersc
   home_dir : #path where I want everything to save
-    nersc : '$HOME/ufd-dkm'
-    usdf : '$HOME/rubin-user/ufd-dkm'
+    nersc : '$HOME/ufd-alfred'
+    usdf : '$HOME/rubin-user/ufd-alfred'
   pckg_dir : 'alfred' #path to the package
   data_dir : 'euclid_data' #path to the external data needed (maps, euclid data, etc)
 output:

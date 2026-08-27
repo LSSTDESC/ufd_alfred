@@ -55,7 +55,7 @@ for band in bands:
 # Load Rubin Data Per Tract (just one from EDFS for now)
 tract_num = 2394
 tract = RegionObjects.Tract(tract_num, butler)
-#field = tract.field
+field = tract.field
 lsst_table = tract.rubin_query(lsst_INCOLS)
       
 ## Load Euclid Data
@@ -90,6 +90,7 @@ euclid_flag_mask = masks_and_filters.clean_euclid(merged_data_raw.data, [0,8,512
 total_mask = snr_mask & lsst_flag_mask & euclid_flag_mask
 # cleaned up data
 merged_data = merged_data_raw.apply_mask(total_mask)
+tract.data.merged = LSSTnEuclidData(merged_data, survey, euclid_survey, field)
 
 ## Select for Stars -- Zerjal + colorcolor Cuts
 colorcolor_mask = masks_and_filters.niroptical_color_stars(merged_data)
@@ -97,6 +98,7 @@ morphology_mask = masks_and_filters.Zerjal_stars(merged_data)
 morphncolor_mask = colorcolor_mask & morphology_mask
 # no one cared who I was til I put on the mask
 stars = merged_data.apply_mask(morphncolor_mask)
+tract.data.stellar_catalog = LSSTnEuclidData(stars, survey, euclid_survey, field)
 
 ## Some S-G validation plots
 plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
@@ -122,32 +124,20 @@ plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 
                                 save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
 print('S-G plots ran and saved')
 
-## Isochrone Search
-'''
-nonans_mask = masks_and_filters.clean_nans(stellar_catalog.g_mag, stellar_catalog.g_magerr) & masks_and_filters.clean_nans(stellar_catalog.r_mag, stellar_catalog.r_magerr)
-nonans_stellar_catalog = stellar_catalog.apply_mask(nonans_mask)
-''' # I don't think applying this mask did much of anything
-#distances = np.arange(200, 2000, 100)
-distance = 300
-isocut_stars_eachdistance = []
-#for distance in distances:
-isochrone_stars = search_tools.isochrone_search(stars, distance, graph=True, save=True)
-#    isocut_stars_eachdistance.append(isochrone_stars)
-isocut_stars_eachdistance_arr = np.array(isocut_stars_eachdistance)
+## hotspot search - includes isochrone cut, density, smoothing, peak fitting, etc
 
-## get maps ready -- need fracdet
-#maybe put these functions as methods of region object
-full_map = mapmaking.euclid_fullmap('q1.vmpz_healpix_coverage', 'vis', 'coverage', preload=True)
-masked_map = mapmaking.match_map_polygon(fullmap, tract.corners)
-tract_map,fracdet_map = mapmaking.rubin_maps(butler, tract.tract, 
-                                             map_name = 'deepCoadd_psf_maglim_map_weighted_mean', band = 'i', 
-                                             nside=2048, 
-                                             save_plot=True, map_title = f'Tract {tract.tract} Rubin i MagLim Map')
-plotting_functions.map_plot(full_map, 'Full Euclid VIS Coverage Map', color_lims = (24,26), 
-         save = True, filename = 'full_coverage_vis_q1')
-plotting_functions.map_plot(masked_map, f'Tract {tract.tract} Euclid VIS Coverage Map', color_lims = (24,26), 
-         save = True, filename = f'{tract.tract}masked_coverage_vis_{euclid_survey}')
-plotting_functions.map_plot(tract_map, f'Tract {tract.tract} Rubin i MagLim Map', color_lims = (24,26), 
-         save = True, filename = f'{tract.tract}_maglim_i_{survey}')
+## need fracdet eventually, but not prioritizing for now
+# maybe put these functions as methods of region object
+#full_map = mapmaking.euclid_fullmap('q1.vmpz_healpix_coverage', 'vis', 'coverage', preload=True)
+#masked_map = mapmaking.match_map_polygon(full_map, tract.corners)
+#tract_map,fracdet_map = mapmaking.rubin_maps(butler, tract.tract, 
+#                                             map_name = 'deepCoadd_psf_maglim_map_weighted_mean', band = 'i', 
+#                                             nside=2048, 
+#                                             save_plot=True, map_title = f'Tract {tract.tract} Rubin i MagLim Map')
+#plotting_functions.map_plot(full_map, 'Full Euclid VIS Coverage Map', color_lims = (24,26), 
+#         save = True, filename = 'full_coverage_vis_q1')
+#plotting_functions.map_plot(masked_map, f'Tract {tract.tract} Euclid VIS Coverage Map', color_lims = (24,26), 
+#         save = True, filename = f'{tract.tract}masked_coverage_vis_{euclid_survey}')
+#plotting_functions.map_plot(tract_map, f'Tract {tract.tract} Rubin i MagLim Map', color_lims = (24,26), 
+#         save = True, filename = f'{tract.tract}_maglim_i_{survey}')
 
-## compute_char_density

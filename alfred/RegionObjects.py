@@ -5,7 +5,7 @@ import yaml
 import os
 import sys
 from astropy.table import Table
-from alfred import utils
+from alfred import utils, DataObjects
 #first need to load in the module I need
 #Goes up a directory to get the updated astroquery
 #sys.path.append(os.path.abspath('../..'))
@@ -24,6 +24,13 @@ with open('config.yaml', 'r') as ymlfile:
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
     euclid_survey = cfg['euclid_survey']
+
+class RegionData():
+    def __init__(self, tract, field, rubin_data, euclid_data, merged_data, stars):
+        self.rubin = LSSTData(rubin_data, survey, tract)
+        self.euclid = EuclidData(euclid_data, euclid_survey)
+        self.merged = LSSTnEuclidData(merged_data, survey, euclid_survey, field)
+        self.stellar_catalog = LSSTnEuclidData(stars, survey, euclid_survey, field)
 
 class Tract():
     def __init__(self, tract, butler):
@@ -54,7 +61,7 @@ class Tract():
         self.corners_str = corners_str.removesuffix(', ')
         self.corners_Angle = SkyMap.getRaDecRange(tract)
 
-        self.tract_data = 0
+        self.data = RegionData(self.tract, self.field, 0,0,0,0)
 
     def rubin_query(self, INCOLS):
         '''
@@ -64,7 +71,7 @@ class Tract():
         full_tract = butler.get('object', 
                                 dataId={'skymap': skymap, 'tract': self.tract}, 
                                 collections=collection, parameters={"columns":INCOLS})
-        self.tract_data = full_tract
+        self.data.rubin = LSSTData(full_tract, survey, self.tract)
         return full_tract
 
     def euclid_query(self, INCOLS, preload = True):
@@ -73,27 +80,25 @@ class Tract():
             os.mkdir(data_dir + f'/{euclid_survey}')
         ## if we've already done this query, just load in that data
             ## (unless user wants to override that for overwriting purposes)
-        if not os.path.exists(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet'):
-            print("Euclid data doesn't exist")
-            preload = False
+        file_dir = data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet'
+        if not utils.check_if_query(file_dir, preload):
+            print("Check tells me Euclid data exists and you don't want to overwrite. Opening existing file now")
+        return Table.read(file_dir)
+        print("Check tells me Euclid data doesn't exist or you do want to overwrite, querying now")
 
-        if preload == True:
-            print("Euclid data exists and you don't want to overwrite existing data, opening file now")
-            results_table = Table.read(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet')
-        else:
-            print("Euclid data doesn't exist or you want to overwrite existing data, querying now")
-            query = f'SELECT {INCOLS} FROM mer_catalogue'
-            radius = 1.7 #going for bigger than a tract
-            #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
-            #                            right_ascension, declination) < {radius}'''
-            query += f''' WHERE CONTAINS(POINT('ICRS', right_ascension, declination),
-                         POLYGON('ICRS', {self.corners_str})) = 1'''
+        query = f'SELECT {INCOLS} FROM mer_catalogue'
+        radius = 1.7 #going for bigger than a tract
+        #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
+        #                            right_ascension, declination) < {radius}'''
+        query += f''' WHERE CONTAINS(POINT('ICRS', right_ascension, declination),
+                     POLYGON('ICRS', {self.corners_str})) = 1'''
 
-            results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-            if not os.path.exists(data_dir + f'/{euclid_survey}'):
-                os.mkdir(data_dir + f'/{euclid_survey}')
-            results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet',
-                                   format='parquet', overwrite = True)
+        results_table = Euclid.launch_job_async(query, verbose=False).get_results()
+        if not os.path.exists(data_dir + f'/{euclid_survey}'):
+            os.mkdir(data_dir + f'/{euclid_survey}')
+        results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet',
+                               format='parquet', overwrite = True)
+        self.data.euclid = EuclidData(results_table, euclid_survey)
         return results_table
 
 # I don't know if I'll want to do a patch class to make these smaller than tract

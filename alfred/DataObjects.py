@@ -104,3 +104,77 @@ class LSSTnEuclidData(LSSTData):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
         return LSSTnEuclidData(new_data, self.lsst_survey, self.euclid_survey, self.tract)
+
+class EuclidData(Data):
+    def __init__(self, data, euclid_survey):
+        super(LSSTData, self).__init__(data)
+        self.euclid_survey = euclid_survey
+        
+        ## coordinates
+        self.euclid_ra = data['right_ascension']
+        self.euclid_dec = data['declination']
+    
+        ## Euclid bands (flux given in mu_Jy)
+        num = 2 #as suggested in Zerjal et al
+        #convert fluxes to nJy, that's what the flux -> mag functions assume
+        self.VIS = Band(data[f'FLUX_VIS_{num}FWHM_APER'.lower()]*(10**3), 
+                        data[f'FLUXERR_VIS_{num}FWHM_APER'.lower()]*(10**3),
+                        'VIS')
+        self.H = Band(data[f'FLUX_H_{num}FWHM_APER'.lower()]*(10**3), 
+                      data[f'FLUXERR_H_{num}FWHM_APER'.lower()]*(10**3),
+                      'H')
+        self.Y = Band(data[f'FLUX_Y_{num}FWHM_APER'.lower()]*(10**3), 
+                      data[f'FLUXERR_Y_{num}FWHM_APER'.lower()]*(10**3),
+                      'Y')
+        self.J = Band(data[f'FLUX_J_{num}FWHM_APER'.lower()]*(10**3), 
+                      data[f'FLUXERR_J_{num}FWHM_APER'.lower()]*(10**3),
+                      'J')
+        #then because I have so many functions already defined, some retroactive definitions:
+        self.VIS_mag = self.VIS.mag
+        self.VIS_magerr = self.VIS.magerr
+        self.H_mag = self.H.mag
+        self.H_magerr = self.H.magerr
+        self.Y_mag = self.Y.mag
+        self.Y_magerr = self.Y.magerr
+        self.J_mag = self.J.mag
+        self.J_magerr = self.J.magerr
+        
+        ## morphology
+        self.pointlikeprob = data['point_like_prob']
+        self.ellipticity = data['ellipticity']
+        self.mumax_minus_mag = self.data['mumax_minus_mag']
+        
+    def apply_mask(self, mask):
+        ## takes in a mask, applies it to the df, then returns another Data object
+        new_data = self.data[mask]
+        return EuclidData(new_data, self.lsst_survey, self.euclid_survey)
+
+class Peaks(): #TO BUILD
+    def __init__(self, x, y, angsep):
+        self.x = x
+        self.y = y
+        self.angsep = angsep
+        self.ra = 0
+        self.dec = 0
+        self.r = 0
+        self.sig = 0
+        self.dist = 0
+        self.n_obs = 0
+        self.n_obs_half = 0
+        self.n_model = 0
+
+    def compute_local_char_density():
+        # takes in nside, data, characteristic density, ra, dec, mag_max, and a fracdet map (x, y needed but already attributes)
+        # finds and returns local characteristic density
+        return None
+        
+    def fit_aperature():
+        #takes in a projection, distance, local characteristic density, (x, y, angsep needed but already attributes)
+        #finds and returns ra_peaks, dec_peaks, r_peaks, sig_peaks, distance_moduli, n_obs_peaks, n_obs_half_peaks, n_model_peaks (makes these attributes)
+        #but there also may be multiples so i'd have to think how to handle those....
+        return None
+
+#eventually I want to have an array/list of Peak objects
+
+    
+

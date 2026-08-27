@@ -45,7 +45,7 @@ def rubin_maps(butler, tract,
     if save_plot == True:
         if map_title == '':
             map_title = f'Tract {tract}, {survey} \n {map_name}'
-        if fracdet_title = '':
+        if fracdet_title == '':
             fracdet_title = f'Tract {tract}, {survey} FracDet of \n {map_name}'
         map_filename = f'{tract}_{survey}_{map_name}'
         fracdet_filename = f'{tract}_{survey}_FRACDET_{map_name}'
@@ -81,7 +81,7 @@ def euclid_fullmap(map_name, band, simple_name, preload=True):
     preload = True means that I want to use the preloaded / saved data instead of querying again
     '''
     combined_map_path = data_dir + f'/maps/combined_{simple_name}_{band.lower()}_{euclid_survey}.fits'
-    query_check = check_if_query(combined_map_path, preload):
+    query_check = utils.check_if_query(combined_map_path, preload)
     if not query_check:
         print("Check tells me map exists and you don't want to overwrite. Opening map")
         combined_map = hsp.HealSparseMap.read(combined_map_path)
@@ -119,7 +119,7 @@ def euclid_tilemap(tile_id, map_name, band, simple_name, preload=True):
     '''
     
     tile_map_path = data_path + f'/{tile}_{simple_name}_{band}_{euclid_survey}.fits'
-    query_check = check_if_query(tile_map_path,preload):
+    query_check = utils.check_if_query(tile_map_path,preload)
     if not query_check:
         print("Check tells me map exists and you don't want to overwrite. Opening map")
         tile_map = hsp.HealSparseMap.read(tile_map_path)

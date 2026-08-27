@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import yaml
+import os
 
 # function to check if the data doesn't exist already and if I want to rewrite it
 def check_if_query(path, preload):
