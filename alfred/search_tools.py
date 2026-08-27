@@ -26,7 +26,7 @@ with open('config.yaml', 'r') as ymlfile:
     euclid_survey = cfg['euclid_survey']
 
 
-def hotspot_search(region, mag_max = 26, nside = 256, fracdet = None, save_graphs=False):
+def hotspot_search(stars, mag_max = 26, nside = 256, fracdet = None, save_graphs=False):
 '''
 per tract but handles all the distances
 inputs:
@@ -43,7 +43,7 @@ outputs:
     peaks = []
     for distance in distances:
         # apply the isochrone cookie-cutter
-        isochrone_stars = search_tools.isochrone_search(region.data.stellar_catalog, 
+        isochrone_stars = search_tools.isochrone_search(stars.g, stars.r 
                                                         distance, age=12.0, Z=0.0002, 
                                                         save_graph=save_graphs)
         if len(isochrone_stars)==0:
@@ -63,9 +63,6 @@ outputs:
 mag_max = 26
 
 def isochrone_search(band1, band2, distance, age=12.0, Z=0.0002, save_graph=True):
-    '''
-    I'm assuming stars_data is a LSSTData or LSSTnEuclidData object
-    '''
     #distance is given in kpc
     distance_modulus = coordinate_tools.distanceToDistanceModulus(distance)
 
