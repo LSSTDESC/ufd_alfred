@@ -1,15 +1,15 @@
+import yaml
+import os
+from astropy.table import Table
+import healpy as hp
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 import lsst.geom as geom
-import yaml
-import os
-import sys
-from astropy.table import Table
-import healpy as hp
+import numpy as np
+import gc
+
 from alfred import utils, DataObjects
-#first need to load in the module I need
-#Goes up a directory to get the updated astroquery
-#sys.path.append(os.path.abspath('../..'))
+
 from external.astroquery_updated.esa.euclid import Euclid
 from external.ugali.utils import healpix
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
@@ -37,9 +37,10 @@ class Region():
         self.dec = dec
         phi = healpix.lon2phi(ra)
         theta = healpix.lat2theta(dec)
-        self.neighbors = hp.pixelfunc.get_all_neighbours(nside, theta, phi=phi) 
+        self.pixel_neighbors = hp.pixelfunc.get_all_neighbours(nside, theta, phi=phi) 
             #returns 8 nearest pixel indices 
-        self.borders = hp.vec2ang(hp.boundaries(nside, pixel, step=50, nest=False), lonlat=True)
+        #self.borders = hp.vec2ang(hp.boundaries(nside, pixel, step=1, nest=False).T, lonlat=True)
+        #self.borders_str = 
 
         #getting these overlapping regions for data querying purposes
         self.rubin_tracts = -1
@@ -51,6 +52,31 @@ class Region():
         self.des_data = 0
         self.data = {}
 
+    def region_cut(self, Data, finer_nside = 4096):
+        '''
+        input a Data Object that has an ra and dec attribute, needs to be in degrees, and apply_mask method
+        '''
+        subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
+        datapix = healpix.ang2pix(finer_nside, Data.ra, Data.dec)
+        mask = np.isin(datapix, subpix)
+        region_data = Data.apply_mask(mask)
+        return region_data
+
+    def region_borders(self, return_type = 'string', step = 1):
+        ra_arr, dec_arr = hp.vec2ang(hp.boundaries(self.nside, self.pixel, step=step, nest=False).T, lonlat=True)
+        if return_type == 'string':
+            border_str = ''
+            for ra, dec in zip(ra_arr, dec_arr):
+                border_str += f'{ra}, {dec}, '
+            border_str = border_str.removesuffix(', ')
+            return border_str
+        elif return_type == 'list':
+            border_list = []
+            for ra, dec in zip(ra_arr, dec_arr):
+                border_list.append((ra, dec))
+            return border_list
+            
+        
     def get_rubin_tracts(self, butler):
         '''
         SkyMap = skyMap object, generated from butler
@@ -75,43 +101,52 @@ class Region():
         queries by tract but for a whole array of tracts, then restricts based on a healpix mask 
         of what is actually in that region
         '''
-        full_tract = butler.get('object', 
-                                dataId={'skymap': skymap, 'tract': tract}, 
-                                collections=collection, parameters={"columns":INCOLS})
-
-        #insert a mask here to not keep the full tract
-        #then delete from memory
-        #return only the data actually in that region
-        
-        rubin_data = LSSTData(full_tract, survey, tract)
+        rubin_data_list = [] #these are a bunch of LSSTData objects -- need to think how to concatenate
+        for tract in tract_arr:
+            full_tract = butler.get('object', 
+                                    dataId={'skymap': skymap, 'tract': tract}, 
+                                    collections=collection, parameters={"columns":INCOLS})
+            rubin_data_list.append(self.region_cut(LSSTData(full_tract, survey)).data)
+                #region_cut returns an LSSTData object, so append just the data of that object
+            del full_tract
+            gc.collect()
+        rubin_data = LSSTData(np.vstack(rubin_data_list), survey)
+            #shove all the tract data together, make it an LSST object
         self.rubin_data = rubin_data
         self.data['LSST '+ survey.upper()] = rubin_data
         return rubin_data
 
     def euclid_query(self, INCOLS, preload = True):
+        '''
+        checks if the data already exists for that survey and nside/pixel. 
+        if it does, we won't query again, if we query, this function saves the new queried data
+            preload means "yes I want you to load the data if it exists"
+            might be False if you want to overwrite the data
+        either way, this assigns the data to self.euclid_data and self.data['Euclid + survey'] 
+        '''
         if not os.path.exists(data_dir + f'/{euclid_survey}'):
             print("no Euclid data folder, making one now")
             os.mkdir(data_dir + f'/{euclid_survey}')
-        ## if we've already done this query, just load in that data
-            ## (unless user wants to override that for overwriting purposes)
-        file_dir = data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet'
+        
+        file_dir = data_dir + f'/{euclid_survey}/{self.nside}_{self.pixel}_euclid.parquet'
         if not utils.check_if_query(file_dir, preload):
             print("Check tells me Euclid data exists and you don't want to overwrite. Opening existing file now")
-        return Table.read(file_dir)
-        print("Check tells me Euclid data doesn't exist or you do want to overwrite, querying now")
-
-        query = f'SELECT {INCOLS} FROM mer_catalogue'
-        radius = 1.7 #going for bigger than a tract
-        #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
-        #                            right_ascension, declination) < {radius}'''
-        query += f''' WHERE CONTAINS(POINT('ICRS', right_ascension, declination),
-                     POLYGON('ICRS', {self.corners_str})) = 1'''
-
-        results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-        if not os.path.exists(data_dir + f'/{euclid_survey}'):
-            os.mkdir(data_dir + f'/{euclid_survey}')
-        results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet',
-                               format='parquet', overwrite = True)
+            results = Table.read(file_dir)
+        else:
+            print("Check tells me Euclid data doesn't exist or you do want to overwrite, querying now")
+    
+            query = f'SELECT {INCOLS} FROM mer_catalogue'
+            radius = 1.7 #going for bigger than a tract
+            #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
+            #                            right_ascension, declination) < {radius}'''
+            query += f''' WHERE CONTAINS(POINT('ICRS', right_ascension, declination),
+                         POLYGON('ICRS', {self.region_borders(return_type='string',step=1)})) = 1'''
+    
+            results_table = Euclid.launch_job_async(query, verbose=False).get_results()
+            if not os.path.exists(data_dir + f'/{euclid_survey}'):
+                os.mkdir(data_dir + f'/{euclid_survey}')
+            results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet',
+                                   format='parquet', overwrite = True)
         
         results = EuclidData(results_table, euclid_survey)
         self.euclid_data = results
@@ -123,6 +158,9 @@ class Region():
         '''
         thinking that this would be really similar to the Euclid function in form
         taking in the columns, using the region borders, returning results/updating attributes
+
+        self.des_data = query_result
+        self.data[DES survey] = query_result
         '''
 
 

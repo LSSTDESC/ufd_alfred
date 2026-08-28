@@ -147,10 +147,10 @@ def euclid_tilemap(tile_id, map_name, band, simple_name, preload=True):
 
     return tile_map
 
-def match_map_polygon(fullmap,corners,nside=2048):
+def match_map_polygon(fullmap, corners, nside=2048):
     '''
-    takes in a healsparse map (I'm assuming it's going to be a Euclid map but generalizable) 
-    and restricts it to be just the polygon area defined by corners (which I'm assuming is a Rubin tract)
+    takes in a healsparse map
+    and restricts it to be just the polygon area defined by corners
 
     fullmap : Healsparse map
     corners : list of SkyCoord objects, should already be in order to create convex polygon
