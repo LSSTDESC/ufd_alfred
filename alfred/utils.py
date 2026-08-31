@@ -20,6 +20,15 @@ def check_if_query(path, preload):
             #I want to overwrite it for whatever reason, so remerge/save them
             return True
 
+def columns_to_query(COLS, bands, output_type='list'):
+    INCOLS = []
+    for band in bands:
+        INCOLS += [col.replace('{band}', band) if '{band}' in col else col for col in COLS]
+    INCOLS = list(dict.fromkeys(INCOLS))
+    if output_type == 'string' or output_type == 'str':
+        INCOLS = ", ".join(INCOLS)
+    return INCOLS
+
 def flux2mag(flux):
     zeropoint = 31.4
     index = flux.index if hasattr(flux, 'index') else None

@@ -95,7 +95,7 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
     plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_lsst, unmatched_lsst, lsst_table, tract, lsst_survey, euclid_survey):
+def oneD_hist_matches(matches1, unmatched1, fulltable1, matches2, unmatched2, fulltable2, Region, release1, release2):
     '''
     Plots 2 one-dimensional histograms of total sources, matched sources, and unmatched sources for Euclid and LSST
 
@@ -115,6 +115,9 @@ def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_ls
     1 saves to plots_dir/merged_verification/euclidmatches_{tract}_{lsst_survey}_{euclid_survey}.png
     Other saves to plots_dir/merged_verification/lsstmatches_{tract}_{lsst_survey}_{euclid_survey}.png
     '''
+
+    #needs the band for histogram of matches, unmatched, and full
+    #needs label for the x-axis
     
     # from Euclid side
     fig, ax = plt.subplots(1,1, figsize=(13,5))
@@ -131,7 +134,7 @@ def oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, matches_ls
     plt.yscale('log')
     plt.title(f'Tract {tract}: Euclid {euclid_survey} Source Match/Unmatch')
     plt.legend()
-    plt.savefig(plots_dir + '/merged_verification/' + 'euclidmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.savefig(plots_dir + '/merged_verification/' + 'euclidmatches_' + f'{Region.nside}_{Region.pixel}_{lsst_survey}_{euclid_survey}.png')
     plt.close()
     
     # from LSST side

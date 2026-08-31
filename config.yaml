@@ -9,12 +9,13 @@ output:
   results_dir : 'results'
   plots_dir : 'plots'
 
-#change with new data releases
-#survey : 'dp1'
-survey : 'dp2'
-euclid_survey : 'q1'
+nside : 32
 
-dp1:
+#change with new data releases
+opt_survey : 'lsst_dp2' #or 'lsst dp1' or 'des y6'
+ir_survey : 'euclid_q1' #or 'euclid dr1' or eventually 'roman'
+
+lsst_dp1:
     repo_config : '/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml'
     collection : 'LSSTComCam/DP1'
     instrument : 'LSSTComCam'
@@ -49,9 +50,14 @@ dp1:
                         'Seagull' : [7611, 7610, 7850],
                         'Rubin_SV_38_7' : [10463, 10464, 10704]
                         }
-    INCOLS_addition : ['{band}_sizeExtendedness', '{band}_sizeExtendedness_flag']
+    bands : 'griz'
+    # depending on which survey, our preferred star-galaxy separating columns will change
+    INCOLS : ['coord_ra', 'coord_dec', 'detect_isIsolated', '{band}_psfFlux', '{band}_cModelFlux', 
+              '{band}_cModelFluxErr', '{band}_psfFluxErr', 'refExtendedness', '{band}_extendedness',
+              '{band}_psfFlux_flag', '{band}_sizeExtendedness', '{band}_sizeExtendedness_flag']
+    s-g separator : '{band}_sizeExtendedness'
 
-dp2:
+lsst_dp2:
     repo_config : 
         nersc : 'dp2'
         usdf : 'dp2_prep'
@@ -76,5 +82,22 @@ dp2:
                         'LELF': [10464, 10221, 10222, 10704, 10705, 10463], # Low Ecliptic Latitude Field / Rubin_SV_38_7
                         'Seagull' : [7850, 7849, 7610, 7611],
                         }
-    INCOLS_addition : ['{band}_model_extendedness']
+    bands : 'griz'
+    # depending on which survey, our preferred star-galaxy separating columns will change
+    INCOLS : ['coord_ra', 'coord_dec', 'detect_isIsolated', '{band}_psfFlux', '{band}_cModelFlux', 
+              '{band}_cModelFluxErr', '{band}_psfFluxErr', 'refExtendedness', '{band}_extendedness',
+              '{band}_psfFlux_flag', '{band}_model_extendedness']
+    s-g separator : '{band}_model_extendedness'
+
+euclid_q1:
+    bands : ['VIS', 'Y', 'J', 'H']
+    INCOLS : ['RIGHT_ASCENSION', 'DECLINATION', 'POINT_LIKE_PROB', 'POINT_LIKE_FLAG', 
+              'ELLIPTICITY', 'MUMAX_MINUS_MAG', 'SPURIOUS_FLAG', 'DET_QUALITY_FLAG', 'FWHM', 'SEGMENTATION_MAP_ID',
+              'FLUX_VIS_PSF', 'FLUXERR_VIS_PSF', 'FLAG_{band}', 'FLUX_{band}_2FWHM_APER', 'FLUXERR_{band}_2FWHM_APER']
+
+des y6:
+    bands :
+    INCOLS :
+    repo_config : 0
+    collection : 0
 

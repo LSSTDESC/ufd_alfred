@@ -18,21 +18,26 @@ from external.ugali.utils import healpix
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     where = cfg['setup']['where']
-    survey = cfg['survey']
-    skymap = cfg[survey]['skymap']
-    repo_config = cfg[survey]['repo_config'][where]
-    collection = cfg[survey]['collection'][where]
+    opt_survey = cfg['opt_survey']
+    skymap = cfg[opt_survey]['skymap']
+    repo_config = cfg[opt_survey]['repo_config'][where]
+    collection = cfg[opt_survey]['collection'][where]
     data_dir = os.path.join(os.path.expandvars(cfg['setup']['home_dir'][where]), cfg['setup']['data_dir'])
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
-    euclid_survey = cfg['euclid_survey']
+    ir_survey = cfg['ir_survey']
 
 class Region():
     #for sharding data into large healpy pixel regions
-    def __init__(self, nside, pixel):
+    def __init__(self, nside, location):
         self.nside = nside
+        if type(location)==int:
+            pixel = location
+            ra,dec = healpix.pix2ang(nside, pixel)
+        elif type(location)==tuple:
+            ra,dec = location
+            pixel = healpix.ang2pix(nside, ra, dec)
         self.pixel = pixel
-        ra,dec = hp.pix2ang(nside, pixel, lonlat=True)
         self.ra = ra
         self.dec = dec
         phi = healpix.lon2phi(ra)
@@ -106,15 +111,16 @@ class Region():
             full_tract = butler.get('object', 
                                     dataId={'skymap': skymap, 'tract': tract}, 
                                     collections=collection, parameters={"columns":INCOLS})
-            rubin_data_list.append(self.region_cut(LSSTData(full_tract, survey)).data)
+            rubin_data_list.append(self.region_cut(full_tract))
                 #region_cut returns an LSSTData object, so append just the data of that object
             del full_tract
             gc.collect()
-        rubin_data = LSSTData(np.vstack(rubin_data_list), survey)
+        rubinData = LSSTData(np.vstack(rubin_data_list), opt_survey)
             #shove all the tract data together, make it an LSST object
-        self.rubin_data = rubin_data
-        self.data['LSST '+ survey.upper()] = rubin_data
-        return rubin_data
+        #store it in the object as the LSST object but return it just as a table
+        self.rubin_data = rubinData
+        self.data[opt_survey] = rubinData
+        return rubinData
 
     def euclid_query(self, INCOLS, preload = True):
         '''
@@ -122,13 +128,13 @@ class Region():
         if it does, we won't query again, if we query, this function saves the new queried data
             preload means "yes I want you to load the data if it exists"
             might be False if you want to overwrite the data
-        either way, this assigns the data to self.euclid_data and self.data['Euclid + survey'] 
+        either way, this assigns the data to self.euclid_data and self.data['euclid survey'] 
         '''
-        if not os.path.exists(data_dir + f'/{euclid_survey}'):
+        if not os.path.exists(data_dir + f'/{ir_survey}'):
             print("no Euclid data folder, making one now")
-            os.mkdir(data_dir + f'/{euclid_survey}')
+            os.mkdir(data_dir + f'/{ir_survey}')
         
-        file_dir = data_dir + f'/{euclid_survey}/{self.nside}_{self.pixel}_euclid.parquet'
+        file_dir = data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet'
         if not utils.check_if_query(file_dir, preload):
             print("Check tells me Euclid data exists and you don't want to overwrite. Opening existing file now")
             results = Table.read(file_dir)
@@ -139,18 +145,18 @@ class Region():
             radius = 1.7 #going for bigger than a tract
             #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
             #                            right_ascension, declination) < {radius}'''
-            query += f''' WHERE CONTAINS(POINT('ICRS', right_ascension, declination),
+            query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
                          POLYGON('ICRS', {self.region_borders(return_type='string',step=1)})) = 1'''
     
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-            if not os.path.exists(data_dir + f'/{euclid_survey}'):
-                os.mkdir(data_dir + f'/{euclid_survey}')
-            results_table.write(data_dir + f'/{euclid_survey}/{self.tract}_euclid.parquet',
+            if not os.path.exists(data_dir + f'/{ir_survey}'):
+                os.mkdir(data_dir + f'/{ir_survey}')
+            results_table.write(data_dir + f'/{ir_survey}/{self.tract}_euclid.parquet',
                                    format='parquet', overwrite = True)
-        
-        results = EuclidData(results_table, euclid_survey)
+        #storing it as the euclid object so we have access to attributes
+        results = EuclidData(results_table, ir_survey)
         self.euclid_data = results
-        self.data['Euclid '+ euclid_survey.upper()] = results
+        self.data[ir_survey] = results
         
         return results
 
@@ -159,12 +165,13 @@ class Region():
         thinking that this would be really similar to the Euclid function in form
         taking in the columns, using the region borders, returning results/updating attributes
 
-        self.des_data = query_result
-        self.data[DES survey] = query_result
+        self.des_data = DESData(query_result)
+        self.data[DES survey] = DESData(query_result)
+        return query_result
         '''
 
 
-
+#~~~~ retiring these, I think ~~~~~
 class Tract():
     def __init__(self, tract, butler):
         '''

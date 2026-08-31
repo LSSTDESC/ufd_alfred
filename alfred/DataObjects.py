@@ -66,23 +66,23 @@ class EuclidData(Data):
         self.release = euclid_survey
         
         ## coordinates
-        self.ra = data['right_ascension']
-        self.dec = data['declination']
+        self.ra = data['RIGHT_ASCENSION']
+        self.dec = data['DECLINATION']
     
         ## Euclid bands (flux given in mu_Jy)
         num = 2 #as suggested in Zerjal et al
         #convert fluxes to nJy, that's what the flux -> mag functions assume
-        self.VIS = Band(data[f'FLUX_VIS_{num}FWHM_APER'.lower()]*(10**3), 
-                        data[f'FLUXERR_VIS_{num}FWHM_APER'.lower()]*(10**3),
+        self.VIS = Band(data[f'FLUX_VIS_2FWHM_APER']*(10**3), 
+                        data[f'FLUXERR_VIS_2FWHM_APER']*(10**3),
                         'VIS')
-        self.H = Band(data[f'FLUX_H_{num}FWHM_APER'.lower()]*(10**3), 
-                      data[f'FLUXERR_H_{num}FWHM_APER'.lower()]*(10**3),
+        self.H = Band(data[f'FLUX_H_2FWHM_APER']*(10**3), 
+                      data[f'FLUXERR_H_2FWHM_APER']*(10**3),
                       'H')
-        self.Y = Band(data[f'FLUX_Y_{num}FWHM_APER'.lower()]*(10**3), 
-                      data[f'FLUXERR_Y_{num}FWHM_APER'.lower()]*(10**3),
+        self.Y = Band(data[f'FLUX_Y_2FWHM_APER']*(10**3), 
+                      data[f'FLUXERR_Y_2FWHM_APER']*(10**3),
                       'Y')
-        self.J = Band(data[f'FLUX_J_{num}FWHM_APER'.lower()]*(10**3), 
-                      data[f'FLUXERR_J_{num}FWHM_APER'.lower()]*(10**3),
+        self.J = Band(data[f'FLUX_J_2FWHM_APER']*(10**3), 
+                      data[f'FLUXERR_J_2FWHM_APER']*(10**3),
                       'J')
         #then because I have so many functions already defined, some retroactive definitions:
         self.VIS_mag = self.VIS.mag
@@ -95,9 +95,9 @@ class EuclidData(Data):
         self.J_magerr = self.J.magerr
         
         ## morphology
-        self.pointlikeprob = data['point_like_prob']
-        self.ellipticity = data['ellipticity']
-        self.mumax_minus_mag = self.data['mumax_minus_mag']
+        self.pointlikeprob = data['POINT_LIKE_PROB']
+        self.ellipticity = data['ELLIPTICITY']
+        self.mumax_minus_mag = self.data['MUMAX_MINUS_MAG']
         
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object

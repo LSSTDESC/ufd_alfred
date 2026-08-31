@@ -14,15 +14,15 @@ def clean_lsst(data, bands):
     return mask
 
 def clean_euclid(data, flags, bands = None, fwhm_limit = 1.5):
-    mask = (data['SPURIOUS_FLAG'.lower()] == 0)
+    mask = (data['SPURIOUS_FLAG'] == 0)
     ## I think the det_quality_flag encompasses the per band flags
     #for band in bands:
     #    mask &= (data[f'FLAG_{band}'] == 0)    
     ## see https://euclid.esac.esa.int/dr/q1/dpdd/merdpd/merphotometrycookbook.html abt which flags to enforce
     for flag in flags:
-        mask |= (data['DET_QUALITY_FLAG'.lower()] == flag)
+        mask |= (data['DET_QUALITY_FLAG'] == flag)
     ## enforcing that euclid sources having FWHM above 1.5" is spurious (Zerjal et al. suggestion)
-    mask &= (data['FWHM'.lower()] <= fwhm_limit)
+    mask &= (data['FWHM'] <= fwhm_limit)
     return mask
 
 def clean_nans(band, band_err):

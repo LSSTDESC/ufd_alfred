@@ -9,6 +9,8 @@ from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_an
 
 #-----------------------------------
 
+# Note: trying to keep everything generalized as Optical and IR survey as this evolves from DES+Euclid -> Rubin+Roman
+
 ## Set Environment Variables
 with open('config.yaml', 'r') as ymlfile:
 # this is a bit hard coded too but idk another work around
@@ -23,84 +25,74 @@ with open('config.yaml', 'r') as ymlfile:
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
 
-    survey = cfg['survey']
-    euclid_survey = cfg['euclid_survey']
-    repo_config = cfg[survey]['repo_config'][where]
-    collection = cfg[survey]['collection'][where]
+    nside = cfg['nside']
+
+    opt_survey = cfg['opt_survey']
+    ir_survey = cfg['ir_survey']
+    repo_config = cfg[opt_survey]['repo_config'][where]
+    collection = cfg[opt_survey]['collection'][where]
     #tract_list = cfg[survey]['tract_list']
-    INCOLS_addition = cfg[survey]['INCOLS_addition']
+    INCOLS1 = cfg[opt_survey]['INCOLS']
+    opt_bands = cfg[opt_survey]['bands']
+    INCOLS2 = cfg[ir_survey]['INCOLS']
+    ir_bands = cfg[ir_survey]['bands']
 
-## Initiate the Butler Instance
-butler = Butler(repo_config, collections=collection)
-#SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
+## Define Which Area We're Looking At -- by nside and by coordinate
+coord = (53.16, -28.10) #just using ECDFS center for now
+SearchRegion = RegionObjects.Region(nside, coord)
 
-## Define Which Columns to Pull Up From Butler
-lsst_INCOLS = [
-    'coord_ra',
-    'coord_dec',
-    'detect_isIsolated',
-]
-bands='griz'
-for band in bands:
-    lsst_INCOLS += [f'{band}_psfFlux',
-                    f'{band}_cModelFlux',
-                    f'{band}_cModelFluxErr',
-                    f'{band}_psfFluxErr',
-                    f'{band}_extendedness',
-                    f'{band}_psfFlux_flag'
-    ]
-    # depending on which survey, our preferred star-galaxy separating columns will change
-    lsst_INCOLS += [col.replace('{band}',band) if '{band}' in col else col for col in INCOLS_addition]
+## Define Which Columns to Pull Up From Data
+opt_INCOLS = utils.columns_to_query(INCOLS1, opt_bands, output_type='list')
+ir_INCOLS = utils.columns_to_query(INCOLS2, ir_bands, output_type = 'string')
 
-# Load Rubin Data Per Tract (just one from EDFS for now)
-tract_num = 2394
-tract = RegionObjects.Tract(tract_num, butler)
-field = tract.field
-lsst_table = tract.rubin_query(lsst_INCOLS)
-      
+
+## Load Rubin Data -- means repo_config and collection are defined and we can use butler
+if repo_config != 0 and collection != 0:
+    ## Initiate the Butler Instance
+    butler = Butler(repo_config, collections=collection)
+    #SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
+    tract_arr = SearchRegion.get_rubin_tracts(butler)
+    OptData = SearchRegion.rubin_query(butler, tract_arr, opt_INCOLS)
 ## Load Euclid Data
-euclid_INCOLS = 'right_ascension, declination, point_like_prob, point_like_flag, ellipticity, mumax_minus_mag, flux_vis_psf, fluxerr_vis_psf, spurious_flag, det_quality_flag, fwhm, segmentation_map_id'
-num = 2
-for band in ['VIS', 'Y', 'J', 'H']:
-    euclid_INCOLS += f", FLAG_{band}, FLUX_{band}_{num}FWHM_APER, FLUXERR_{band}_{num}FWHM_APER".lower()
-euclid_table = tract.euclid_query(euclid_INCOLS, preload = True)
+if 'euclid' in ir_survey:
+    IRData = SearchRegion.euclid_query(ir_INCOLS, preload = True)
+# the queries return the data as their respective objects
 
 ## Merge Catalogs and Clean Up Memory
-merged_table = merging_catalogs.merge_catalogs(lsst_table, euclid_table, tract.tract, 
-                                               preload = True, validation_needed = True)
-merged_data_raw = DataObjects.LSSTnEuclidData(merged_table, survey, euclid_survey, tract.tract)
-del lsst_table, euclid_table, merged_table
+mergedData_raw = merging_catalogs.merge_catalogs(OptData, IRData, SearchRegion,
+                                                 preload = True, validation_needed = True)
+del OptData, IRData #don't worry, these things are saved in the SearchRegion (uncleaned but still, saved)
 gc.collect()
 
-## Clean Up Quality
+## Clean Up Quality -- this will depend on which surveys are being used
+if 'lsst' in opt_survey:
+    # Q: which band snr should I enforce? - right now doing really lax snr > 3 cut
+    snr_mask = masks_and_filters.clean_snr(mergedData_raw.g.mag, mergedData_raw.g.magerr, 3)
+    snr_mask &= masks_and_filters.clean_snr(mergedData_raw.z.mag, mergedData_raw.z.magerr, 3)
+    # this enforces that there are no per band flux flags
+    opt_flag_mask = masks_and_filters.clean_lsst(mergedData_raw.data, 'griz')
+if 'euclid' in ir_survey:
+    snr_mask &= masks_and_filters.clean_snr(mergedData_raw.VIS.mag, mergedData_raw.VIS.magerr, 3)
+    # Q: which euclid flags to enforce?
+    # 0=no flags, 8=source close to a border, 512=source within an extended object area
+    ir_flag_mask = masks_and_filters.clean_euclid(mergedData_raw.data, [0,8,512])
 
-# Q: which band snr should I enforce? - right now doing really lax snr > 3 cut
-snr_mask = masks_and_filters.clean_snr(merged_data_raw.g_mag, merged_data_raw.g_magerr, 3)
-snr_mask &= masks_and_filters.clean_snr(merged_data_raw.z_mag, merged_data_raw.z_magerr, 3)
-snr_mask &= masks_and_filters.clean_snr(merged_data_raw.VIS_mag, merged_data_raw.VIS_magerr, 3)
-
-# this enforces no per band flux flags
-lsst_flag_mask = masks_and_filters.clean_lsst(merged_data_raw.data, 'griz')
-
-# Q: which euclid flags to enforce?
-# 0=no flags, 8=source close to a border, 512=source within an extended object area
-euclid_flag_mask = masks_and_filters.clean_euclid(merged_data_raw.data, [0,8,512])
-
-# mix em all together
-total_mask = snr_mask & lsst_flag_mask & euclid_flag_mask
-# cleaned up data
-merged_data = merged_data_raw.apply_mask(total_mask)
-tract.data.merged = LSSTnEuclidData(merged_data, survey, euclid_survey, field)
+## mix em all together
+total_mask = snr_mask & opt_flag_mask & ir_flag_mask
+## clean up data
+mergedData = mergedData_raw.apply_mask(total_mask)
+SearchRegion.data[opt_survey+'-'+ir_survey] = mergedData
 
 ## Select for Stars -- Zerjal + colorcolor Cuts
-colorcolor_mask = masks_and_filters.niroptical_color_stars(merged_data)
-morphology_mask = masks_and_filters.Zerjal_stars(merged_data)
+colorcolor_mask = masks_and_filters.niroptical_color_stars(mergedData)
+morphology_mask = masks_and_filters.Zerjal_stars(mergedData)
 morphncolor_mask = colorcolor_mask & morphology_mask
 # no one cared who I was til I put on the mask
-stars = merged_data.apply_mask(morphncolor_mask)
-tract.data.stellar_catalog = LSSTnEuclidData(stars, survey, euclid_survey, field)
+stars = mergedData.apply_mask(morphncolor_mask)
+#should I add a stars attribute to the region?
 
-## Some S-G validation plots
+## Some S-G validation plots - NEEDS TO BE UPDATED
+'''
 plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
                                    'c',
                                    f'''g vs g-r of {stars.lsst_survey} and {stars.euclid_survey} stars 
@@ -123,7 +115,7 @@ plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 
                                 histogram = True,
                                 save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
 print('S-G plots ran and saved')
-
+'''
 ## hotspot search - includes isochrone cut, density, smoothing, peak fitting, etc
 
 ## need fracdet eventually, but not prioritizing for now
@@ -140,4 +132,3 @@ print('S-G plots ran and saved')
 #         save = True, filename = f'{tract.tract}masked_coverage_vis_{euclid_survey}')
 #plotting_functions.map_plot(tract_map, f'Tract {tract.tract} Rubin i MagLim Map', color_lims = (24,26), 
 #         save = True, filename = f'{tract.tract}_maglim_i_{survey}')
-
