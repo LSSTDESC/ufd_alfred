@@ -56,12 +56,13 @@ def fluxerr2magerr(flux, flux_err):
         return pd.Series(mag, index=index)
     return magerr
     
-with open('config.yaml', 'r') as ymlfile:
-    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
-    survey = cfg['survey']
-    tract_dict = cfg[survey]['field2tract_dict']
+
 
 def get_tract(field):
+    with open('config.yaml', 'r') as ymlfile:
+        cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+        survey = cfg['opt_survey']
+        tract_dict = cfg[survey]['field2tract_dict']
     '''
     Input: field -- str, name of field in LSST data (case sensitive)
     Output: tracts -- list of ints, all the tracts that lie in the definition of that field
@@ -75,6 +76,10 @@ def get_tract(field):
         raise Exception('Field not found. Check capitalization or spelling')
 
 def get_field(tract):
+    with open('config.yaml', 'r') as ymlfile:
+        cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+        survey = cfg['opt_survey']
+        tract_dict = cfg[survey]['field2tract_dict']
     '''
     Input: tract -- int, single tract number
     Output: field -- str, field in which that tract is defined

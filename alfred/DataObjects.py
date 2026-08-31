@@ -58,7 +58,7 @@ class LSSTData(Data):
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTData(new_data, self.lsst_release, self.tract)
+        return LSSTData(new_data, self.release)
 
 class EuclidData(Data):
     def __init__(self, data, euclid_survey):
@@ -102,7 +102,7 @@ class EuclidData(Data):
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return EuclidData(new_data, self.lsst_survey, self.euclid_survey)
+        return EuclidData(new_data, self.release)
 
 class DESData(Data):
     def __init__(self, data, des_survey):
@@ -130,7 +130,7 @@ class LSSTnEuclidData(LSSTData, EuclidData):
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTnEuclidData(new_data, coord_choice=self.coord_choice)
+        return LSSTnEuclidData(new_data, self.release, self.release, coord_choice=self.coord_choice)
 
 class DESnEuclidData(DESData, EuclidData):
     def __init__(self, merged_data, des_release, euclid_release, coord_choice='DES'):

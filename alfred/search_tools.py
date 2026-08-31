@@ -22,20 +22,18 @@ with open('config.yaml', 'r') as ymlfile:
     results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
-    survey = cfg['survey']
-    euclid_survey = cfg['euclid_survey']
 
 
 def hotspot_search(stars, mag_max = 26, nside = 256, fracdet = None, save_graphs=False):
-'''
-per tract but handles all the distances
-inputs:
-    region - has the stellar catalog and the ra/dec info
-    whether you want to save the graphs
-    nside - I don't know how to select an nside really. do i want it to be large or small??
-outputs:
-    peak attributes
-'''
+    '''
+    per tract but handles all the distances
+    inputs:
+        region - has the stellar catalog and the ra/dec info
+        whether you want to save the graphs
+        nside - I don't know how to select an nside really. do i want it to be large or small??
+    outputs:
+        peak attributes
+    '''
     # load in maps
 
     #iterate over distances
@@ -43,7 +41,7 @@ outputs:
     peaks = []
     for distance in distances:
         # apply the isochrone cookie-cutter
-        isochrone_stars = search_tools.isochrone_search(stars.g, stars.r 
+        isochrone_stars = search_tools.isochrone_search(stars.g, stars.r,
                                                         distance, age=12.0, Z=0.0002, 
                                                         save_graph=save_graphs)
         if len(isochrone_stars)==0:

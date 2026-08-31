@@ -95,7 +95,7 @@ euclid_q1:
               'ELLIPTICITY', 'MUMAX_MINUS_MAG', 'SPURIOUS_FLAG', 'DET_QUALITY_FLAG', 'FWHM', 'SEGMENTATION_MAP_ID',
               'FLUX_VIS_PSF', 'FLUXERR_VIS_PSF', 'FLAG_{band}', 'FLUX_{band}_2FWHM_APER', 'FLUXERR_{band}_2FWHM_APER']
 
-des y6:
+des_y6:
     bands :
     INCOLS :
     repo_config : 0

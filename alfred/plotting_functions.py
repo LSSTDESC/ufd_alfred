@@ -95,136 +95,120 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
     plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def oneD_hist_matches(matches1, unmatched1, fulltable1, matches2, unmatched2, fulltable2, Region, release1, release2):
+def oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band, SearchRegion, PrimaryData, SecondaryData):
     '''
     Plots 2 one-dimensional histograms of total sources, matched sources, and unmatched sources for Euclid and LSST
 
     Parameters - all of which come from the merging_catalogs function
     ----------
-    matches_euclid, unmatched_euclid : numpy arrays of the matched and unmatched sources from Euclid
-    euclid_field : Table or other dataframe type, all Euclid data from that area
-    matches_lsst, unmatched_lsst : numpy arrays of the matched and unmatched sources from LSST
-    lsst_table : Table or other dataframe type, all LSST data from that area 
-    tract : int, tract these datasets are querying
-    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
-    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+    match(1/2)Band, unmatch(1/2)Band : Band objects of the matched and unmatched sources from 1=Primary, 2=Secondary surveys
+    full(1/2)Band : Band objects of the full data (matched+unmatched) from, again, 1=Primary, 2=Secondary surveys
+                Band has attributes mag, magerr, flux, fluxerr, and str
+    SearchRegion : Region object, has all the attributes to define where this data is looking
+    Primary/SecondaryData : some Data objects (probably a child class), in this context just tells us which data release this is
 
     Returns
     --------
-    2 pretty plots
-    1 saves to plots_dir/merged_verification/euclidmatches_{tract}_{lsst_survey}_{euclid_survey}.png
-    Other saves to plots_dir/merged_verification/lsstmatches_{tract}_{lsst_survey}_{euclid_survey}.png
+    1 pretty plot, 2 subplots
+    Saves to plots_dir/merged_verification/1dhistmatches_{nside}_{pixel}_{primary survey}_{secondary survey}.png
     '''
 
-    #needs the band for histogram of matches, unmatched, and full
-    #needs label for the x-axis
-    
-    # from Euclid side
-    fig, ax = plt.subplots(1,1, figsize=(13,5))
-    match_vis_mag = utils.flux2mag(matches_euclid['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
-    unmatch_vis_mag = utils.flux2mag(unmatched_euclid['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
-    total_vis_mag = utils.flux2mag(euclid_field['FLUX_VIS_2FWHM_APER'.lower()]*(10**3))
+    fig, ax = plt.subplots(1,2, figsize=(20,7))
     b = 60
-    plt.hist(match_vis_mag, bins = b, histtype = 'step', color='b', label = 'Matched Euclid Sources')
-    plt.hist(unmatch_vis_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched Euclid Sources')
-    plt.hist(total_vis_mag, bins = b, histtype = 'step', color='k', label = 'Total Euclid Sources')
-    plt.xlabel('flux_vis_2fwhm_aper mag')
-    plt.xlim(16, 36)
-    plt.ylabel('Number counts')
-    plt.yscale('log')
-    plt.title(f'Tract {tract}: Euclid {euclid_survey} Source Match/Unmatch')
-    plt.legend()
-    plt.savefig(plots_dir + '/merged_verification/' + 'euclidmatches_' + f'{Region.nside}_{Region.pixel}_{lsst_survey}_{euclid_survey}.png')
-    plt.close()
+
+    #one dataset...
+    ax[0].hist(match1Band.mag, bins = b, histtype = 'step', color='b', label = 'Matched')
+    ax[0].hist(unmatch1Band.mag, bins = b, histtype = 'step', color='r', label = 'Unmatched')
+    ax[0].hist(full1Band.mag, bins = b, histtype = 'step', color='k', label = 'All Sources')
+    ax[0].set(xlabel=f'{match1Band.str} mag', xlim=(16, 36), ylabel='Number counts', yscale='log',
+              title=f'{PrimaryData.release.replace('_',' ').upper()} Sources Match/Unmatch')
+
+    #... then the other
+    ax[1].hist(match2Band.mag, bins = b, histtype = 'step', color='b', label = 'Matched')
+    ax[1].hist(unmatch2Band.mag, bins = b, histtype = 'step', color='r', label = 'Unmatched')
+    ax[1].hist(full2Band.mag, bins = b, histtype = 'step', color='k', label = 'All Sources')
+    ax[1].set(xlabel=f'{match2Band.str} mag', xlim=(16, 36), ylabel='Number counts', yscale='log',
+              title=f'{SecondaryData.release.replace('_',' ').upper()} Sources Match/Unmatch')
     
-    # from LSST side
-    match_i_mag = utils.flux2mag(matches_lsst['i_psfFlux'])
-    unmatch_i_mag = utils.flux2mag(unmatched_lsst['i_psfFlux'])
-    total_i_mag = utils.flux2mag(lsst_table['i_psfFlux'])
-    fig, ax = plt.subplots(1,1, figsize=(13,5))
-    plt.hist(match_i_mag, bins = b, histtype = 'step', color='c', label = 'Matched LSST Sources')
-    plt.hist(unmatch_i_mag, bins = b, histtype = 'step', color='r', label = 'Unmatched LSST Sources')
-    plt.hist(total_i_mag, bins = b, histtype = 'step', color='k', label = 'Total LSST Sources')
-    plt.xlabel('i_psfFlux mag')
-    plt.xlim(16,36)
-    plt.ylabel('Number counts')
-    plt.yscale('log')
-    plt.title(f'Tract {tract}: LSST {lsst_survey} Source Match/Unmatch')
     plt.legend()
-    plt.savefig(plots_dir + '/merged_verification/' + 'lsstmatches_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    
+    plt.savefig(plots_dir + '/merged_verification/' + f'''1dhistmatches_
+                                                          {SearchRegion.nside}_{SearchRegion.pixel}_
+                                                          {PrimaryData.release}_{SecondaryData.release}.png''')
     plt.close()
 
-def twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_survey):
+def twoD_hist_matches(SearchRegion, PrimaryData, SecondaryData):
     '''
-    Plots 2 two-dimensional histograms of matched sources for Euclid and LSST
+    Plots 2 two-dimensional histograms of matched sources for 2 surveys
 
     Parameters - all of which come from the merging_catalogs function
     ----------
-    matches_euclid, unmatched_euclid : numpy arrays of the matched and unmatched sources from Euclid
-    matches_lsst, unmatched_lsst : numpy arrays of the matched and unmatched sources from LSST
-    tract : int, tract these datasets are querying
-    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
-    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+    SearchRegion : Region object, has all the attributes to define where this data is looking
+    Primary/SecondaryData : some Data objects (probably a child class) to map the locations of matched sources
 
     Returns
     --------
     Pretty plot with 2 subplots (one side is the matches in Euclid, other is the matches in LSST)
-    Saves to plots_dir/merged_verification/2dhist_{tract}_{lsst_survey}_{euclid_survey}.png
+    Saves to plots_dir/merged_verification/2dhist_{nside}_{pixel}_{primary survey}_{secondary survey}.png
     '''
     fig, ax = plt.subplots(1,2, figsize=(13,5))
-    _, _, _, im = ax[0].hist2d(matches_euclid['right_ascension'], matches_euclid['declination'], bins=100)
+    _, _, _, im = ax[0].hist2d(PrimaryData.ra, PrimaryData.dec, bins=100)
     plt.colorbar(im, ax=ax[0])
-    ax[0].set(title = f'Tract {tract}: Matches in Euclid', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+    ax[0].set(title = f'Matches in {PrimaryData.release.replace('_',' ').upper()}', ylabel = "Dec (deg)", xlabel = "RA (deg)")
     ax[0].invert_xaxis()
-    _, _, _, im = ax[1].hist2d(matches_lsst['coord_ra'], matches_lsst['coord_dec'], bins=100)
+    _, _, _, im = ax[1].hist2d(SecondaryData.ra, SecondaryData.dec, bins=100)
     plt.colorbar(im, ax=ax[1])
-    ax[1].set(title = f'Tract {tract}: Matches in LSST', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+    ax[1].set(title = f'Matches in {SecondaryData.release.replace('_',' ').upper()}', ylabel = "Dec (deg)", xlabel = "RA (deg)")
     ax[1].invert_xaxis()
-    plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.release}_{SecondaryData.release}.png')
     plt.close()
 
-def source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_survey): 
+    
+def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, mag_cut_label=None): 
     '''
-    Plots 2-D scatterplot of where all the Euclid and LSST coordinates are, within 0.01x0.01 deg box
+    Plots 2-D scatterplot of where *all* the source coordinates of the two surveys are, within 0.01x0.01 deg box
 
     Parameters - all of which come from the merging_catalogs function
     ----------
-    euclid_field : Table or other dataframe type, all Euclid data from that area
-    lsst_table : Table or other dataframe type, all LSST data from that area 
-    tract : int, tract these datasets are querying
-    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
-    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+    Primary/SecondaryData : some Data objects (probably a child class) to map the locations of all sources, to see if they overlap
+    SearchRegion : Region object, has all the attributes to define where this data is looking
+    mag_cut (optional) : default None, else mask. A mask of a magnitude cut to be applied, e.g. (i.mag > 24)
+    mag_cut_label (optional) : default None, else string. Labels what is the magnitude cut for the title
 
     Returns
     --------
     Pretty plot
-    Saves to plots_dir/merged_verification/2dscatter_{tract}_{lsst_survey}_{euclid_survey}.png
+    Saves to plots_dir/merged_verification/2dscatter_{nside}_{pixel}_{primary survey}_{secondary survey}_{mag_cut_label}.png
     '''
-    #fig, ax = plt.subplots(1,1, figsize=(7,5))
-    # 2D scatter of matches in Euclid and LSST, do they overlap?
-    i_mag = utils.flux2mag(lsst_table['i_psfFlux'])
-    vis_mag = utils.flux2mag(euclid_field['FLUX_VIS_PSF'.lower()]*10**3)
+    title = f'{PrimaryData.release.replace('_',' ').upper()} and {SecondaryData.release.replace('_',' ').upper()} before matching'
+    filename = '2dscatter_' + f'{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.release}_{SecondaryData.release}'
+    if mag_cut is not None:
+        primarydata = PrimaryData.apply_mask(mag_cut)
+        secondarydata = SecondaryData.apply_mask(mag_cut)
+        title += f' with magnitude cut {mag_cut_label}'
+        filename += f'_{mag_cut_label.maketrans({'<': 'lt', '>': 'gt', ' ': ''})}.png'
+    else:
+        primarydata = PrimaryData
+        secondarydata = SecondaryData
+        filename += '.png'
         
-    lsst = lsst_table #[(i_mag < 22)]
-    euclid = euclid_field #[(vis_mag < 22)]
-    
-    plt.scatter(euclid['right_ascension'], euclid['declination'], 
-                marker = '+', label = 'Euclid Sources', #c = utils.flux2mag(euclid['FLUX_VIS_PSF']*10**3), 
+    plt.scatter(primarydata.ra, primarydata.dec, 
+                marker = '+', label = f'{primarydata.release.replace('_',' ').upper()}'
                )
-    plt.scatter(lsst['coord_ra'], lsst['coord_dec'], 
-                marker = 'x', label = 'LSST Sources', #c = utils.flux2mag(lsst['i_psfFlux']),
+    plt.scatter(secondarydata.ra, secondarydata.dec, 
+                marker = 'x', label = f'{secondarydata.release.replace('_',' ').upper()}'
                )
-    plt.xlim(np.min(lsst['coord_ra'])+0.01, np.min(lsst['coord_ra']))
+    plt.xlim(np.min(primarydata.ra)+0.01, np.min(primarydata.ra))
     plt.xlabel('RA (deg)')
-    plt.ylim(np.min(lsst['coord_dec']),np.min(lsst['coord_dec'])+0.01)
+    plt.ylim(np.min(primarydata.dec),np.min(primarydata.dec)+0.01)
     plt.ylabel('DEC (deg)')
     #plt.colorbar()
     plt.legend()
     plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
-    plt.savefig(plots_dir + '/merged_verification/' + '2dscatter_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    plt.savefig(plots_dir + '/merged_verification/' + filename)
     plt.close()
 
-def coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey):
+def coord_diff_hist(merged_df_coord1, merged_df_coord2, PrimaryData, SecondaryData, SearchRegion, ds=None):
     '''
     Plots 2 one-dimensional histograms of the RA and Dec differences (Euclid - LSST for both)
 
@@ -232,13 +216,13 @@ def coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey):
     ----------
     merged_df : Table or other dataframe type, merged catalog (both Euclid and LSST data)
     tract : int, tract these datasets are querying
-    lsst_survey : str, label of the survey release from which the data comes, e.g. 'dp2'
-    euclid_survey : str, label of the survey release from which the data comes, e.g. 'q1'
+    Primary/SecondaryData : some Data objects (probably a child class) just need the releases
+    SearchRegion : Region object, has all the attributes to define where this data is looking
 
     Returns
     --------
-    2 pretty plots
-    Saves to plots_dir/merged_verification/{radiff or decdiff}_{tract}_{lsst_survey}_{euclid_survey}.png
+    1 pretty plot, 2 subplots
+    Saves to plots_dir/merged_verification/{coorddiff}_{nside}_{pixel}_{primary survey}_{secondary survey}.png
     '''
     #commented out version of this below
     '''
@@ -251,26 +235,25 @@ def coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey):
     plt.tight_layout()
     plt.show()
     '''
-    ra_diff = (merged_df['right_ascension'] - merged_df['coord_ra'])*3600
-    dec_diff = (merged_df['declination'] - merged_df['coord_dec'])*3600
+    fig, ax = plt.subplots(1,2, figsize=(20,7))
+    ra_diff = (merged_df_coord1[0] - merged_df_coord2[0])*3600
+    dec_diff = (merged_df_coord1[1] - merged_df_coord2[1])*3600
     
-    plt.hist(ra_diff, bins = 100)
-    plt.title('Merged Catalog RA difference')
-    plt.xlabel('Euclid RA - LSST RA (arcsec)')
-    plt.xlim(-1,1)
-    plt.savefig(plots_dir + '/merged_verification/' + 'radiff_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
-    plt.close()
+    ax[0].hist(ra_diff, bins = 100)
+    ax[0].set(title='Merged Catalog RA difference', xlabel=f'{PrimaryData.release} RA - {SecondaryData.release} RA (arcsec)', xlim=(-1,1))
     
-    plt.hist(dec_diff, bins = 100)
-    plt.xlim(-0.5,0.5)
-    plt.xlabel('Euclid DEC - LSST DEC (arcsec)')
-    plt.title('Merged Catalog DEC difference')
-    plt.savefig(plots_dir + '/merged_verification/' + 'decdiff_' + f'{tract}_{lsst_survey}_{euclid_survey}.png')
+    ax[1].hist(dec_diff, bins = 100)
+    ax[1].set(title='Merged Catalog DEC difference', xlabel=f'{PrimaryData.release} DEC - {SecondaryData.release} DEC (arcsec)', xlim=(-1,1))
+    
+    plt.savefig(plots_dir + '/merged_verification/' + 'coorddiff_' + f'''{SearchRegion.nside}_{SearchRegion.pixel}
+                                                                        _{PrimaryData.release}_{SecondaryData.release}.png''')
     plt.close()
 
-def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches_lsst, matches_euclid, 
-                           unmatched_lsst, unmatched_euclid, 
-                           lsst_table, euclid_field, ds):
+
+def match_validation_plots(match1Band, unmatch1Band, full1Band,
+                           match2Band, unmatch2Band, full2Band,
+                           merged_df_coord1, merged_df_coord2,
+                           SearchRegion, PrimaryData, SecondaryData):
     '''
     All the outputs from the merging_catalogs function going into different validation plots
 
@@ -293,13 +276,12 @@ def match_validation_plots(tract, lsst_survey, euclid_survey, merged_df, matches
     '''
     if not os.path.exists(plots_dir + f'/merged_verification'):
         os.mkdir(plots_dir + f'/merged_verification')
-        
-    oneD_hist_matches(matches_euclid, unmatched_euclid, euclid_field, 
-                      matches_lsst, unmatched_lsst, lsst_table, 
-                      tract, lsst_survey, euclid_survey)
-    twoD_hist_matches(matches_euclid, matches_lsst, tract, lsst_survey, euclid_survey)
-    source_scatterplot(lsst_table, euclid_field, tract, lsst_survey, euclid_survey)
-    coord_diff_hist(merged_df, tract, lsst_survey, euclid_survey)
+
+    oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band,
+                      SearchRegion, PrimaryData, SecondaryData)
+    twoD_hist_matches(SearchRegion, PrimaryData, SecondaryData)
+    source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, mag_cut_label=None)
+    coord_diff_hist(merged_df_coord1, merged_df_coord2, PrimaryData, SecondaryData, SearchRegion, ds=None)
     print('Match validation plots ran and saved')
 
 

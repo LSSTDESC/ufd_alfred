@@ -1,6 +1,6 @@
 import yaml
 import os
-from astropy.table import Table
+from astropy.table import Table,vstack
 import healpy as hp
 from astropy.coordinates import SkyCoord
 from astropy import units as u
@@ -82,15 +82,15 @@ class Region():
             return border_list
             
         
-    def get_rubin_tracts(self, butler):
+    def get_rubin_tracts(self, butler, finer_nside=4096):
         '''
         SkyMap = skyMap object, generated from butler
         '''
-        
         SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
-        ra_arr, dec_arr = self.borders
+        subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
         tract_ids = []
-        for ra,dec in zip(ra_arr,dec_arr):
+        for pix in subpix:
+            ra, dec = healpix.pix2ang(finer_nside, pix)
             TractsInfo = SkyMap.findTract(geom.SpherePoint(ra*geom.degrees,dec*geom.degrees))
             tract_ids.append(TractsInfo.tract_id)
         tract_ids = np.unique(tract_ids)
@@ -106,20 +106,22 @@ class Region():
         queries by tract but for a whole array of tracts, then restricts based on a healpix mask 
         of what is actually in that region
         '''
+        print('Querying Rubin tracts ', tract_arr)
         rubin_data_list = [] #these are a bunch of LSSTData objects -- need to think how to concatenate
         for tract in tract_arr:
             full_tract = butler.get('object', 
                                     dataId={'skymap': skymap, 'tract': tract}, 
                                     collections=collection, parameters={"columns":INCOLS})
-            rubin_data_list.append(self.region_cut(full_tract))
-                #region_cut returns an LSSTData object, so append just the data of that object
+            rubin_data_list.append(self.region_cut(DataObjects.LSSTData(full_tract,opt_survey)).data)
+                #region_cut accepts and returns an LSSTData object, so append just the data of that object
             del full_tract
             gc.collect()
-        rubinData = LSSTData(np.vstack(rubin_data_list), opt_survey)
+        rubinData = DataObjects.LSSTData(vstack(rubin_data_list), opt_survey)
             #shove all the tract data together, make it an LSST object
         #store it in the object as the LSST object but return it just as a table
         self.rubin_data = rubinData
         self.data[opt_survey] = rubinData
+        print('Rubin query done!')
         return rubinData
 
     def euclid_query(self, INCOLS, preload = True):
@@ -137,7 +139,7 @@ class Region():
         file_dir = data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet'
         if not utils.check_if_query(file_dir, preload):
             print("Check tells me Euclid data exists and you don't want to overwrite. Opening existing file now")
-            results = Table.read(file_dir)
+            results_table = Table.read(file_dir)
         else:
             print("Check tells me Euclid data doesn't exist or you do want to overwrite, querying now")
     
@@ -151,10 +153,10 @@ class Region():
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
             if not os.path.exists(data_dir + f'/{ir_survey}'):
                 os.mkdir(data_dir + f'/{ir_survey}')
-            results_table.write(data_dir + f'/{ir_survey}/{self.tract}_euclid.parquet',
+            results_table.write(data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet',
                                    format='parquet', overwrite = True)
         #storing it as the euclid object so we have access to attributes
-        results = EuclidData(results_table, ir_survey)
+        results = DataObjects.EuclidData(results_table, ir_survey)
         self.euclid_data = results
         self.data[ir_survey] = results
         

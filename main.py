@@ -60,7 +60,8 @@ if 'euclid' in ir_survey:
 
 ## Merge Catalogs and Clean Up Memory
 mergedData_raw = merging_catalogs.merge_catalogs(OptData, IRData, SearchRegion,
-                                                 preload = True, validation_needed = True)
+                                                 preload = False, validation_needed = True)
+print('Merged catalogs (somehow)')
 del OptData, IRData #don't worry, these things are saved in the SearchRegion (uncleaned but still, saved)
 gc.collect()
 
@@ -92,7 +93,7 @@ stars = mergedData.apply_mask(morphncolor_mask)
 #should I add a stars attribute to the region?
 
 ## Some S-G validation plots - NEEDS TO BE UPDATED
-'''
+"""
 plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
                                    'c',
                                    f'''g vs g-r of {stars.lsst_survey} and {stars.euclid_survey} stars 
@@ -115,7 +116,7 @@ plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 
                                 histogram = True,
                                 save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
 print('S-G plots ran and saved')
-'''
+"""
 ## hotspot search - includes isochrone cut, density, smoothing, peak fitting, etc
 
 ## need fracdet eventually, but not prioritizing for now

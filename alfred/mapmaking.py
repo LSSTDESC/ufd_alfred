@@ -24,11 +24,10 @@ with open('config.yaml', 'r') as ymlfile:
     if not os.path.exists(data_dir+'/maps'):
         os.mkdir(data_dir+'/maps')
     
-    survey = cfg['survey']
-    collection = cfg[survey]['collection'][where]
-    skymap = cfg[survey]['skymap']
+    opt_survey = cfg['opt_survey']
+    collection = cfg[opt_survey]['collection'][where]
+    skymap = cfg[opt_survey]['skymap']
     
-    euclid_survey = cfg['euclid_survey']
 
 ## WHICH Rubin map do I want??
 
