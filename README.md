@@ -1,4 +1,4 @@
-# Ultra Faint Dwarf Galaxies for Dark Matter
+# Ultra Faint Dwarf Galaxy Discovery for Dark Matter Constraints
 
 Pipeline tools for finding ultra-faint dwarf galaxies for dark matter analysis using joint LSST and Euclid photometry+morphology.  
 :construction: Most recent code under construction on the searching branch
