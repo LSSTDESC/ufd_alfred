@@ -174,7 +174,7 @@ def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, m
     SearchRegion : Region object, has all the attributes to define where this data is looking
     mag_cut (optional) : default None, else mask. A mask of a magnitude cut to be applied, e.g. (i.mag > 24)
     mag_cut_label (optional) : default None, else string. Labels what is the magnitude cut for the title
-    ra_limits, dec_limits (optional) : default None, else a tuple of floats. The coordinate range you wish to plot (ra should be given backwards if a flipped x-axis is desired)
+    ra_limits, dec_limits (optional) : default None, else a tuple of floats. The coordinate range you wish to plot (in degrees) (ra should be given backwards if a flipped x-axis is desired)
 
     Returns
     --------
@@ -199,9 +199,12 @@ def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, m
     plt.scatter(secondarydata.ra, secondarydata.dec,
                 marker = 'x', label = f'{secondarydata.release.replace('_',' ').upper()}'
                )
-    plt.xlim(np.median(primarydata.ra)+0.01, np.median(primarydata.ra))
+    if ra_limits is None:
+        ra_limits = (np.median(primarydata.ra)+0.01, np.median(primarydata.ra))
+        dec_limits = (np.median(primarydata.dec),np.median(primarydata.dec)+0.01)
+    plt.xlim(ra_limits[0], ra_limits[1])
     plt.xlabel('RA (deg)')
-    plt.ylim(np.median(primarydata.dec),np.median(primarydata.dec)+0.01)
+    plt.ylim(dec_limits[0], dec_limits[1])
     plt.ylabel('DEC (deg)')
     #plt.colorbar()
     plt.legend()
