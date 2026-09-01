@@ -10,8 +10,8 @@ import gc
 
 from alfred import utils, DataObjects
 
-from external.astroquery_updated.esa.euclid import Euclid
-from external.ugali.utils import healpix
+from astroquery_updated.esa.euclid import Euclid
+from ugali.utils import healpix
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 or 10?
 

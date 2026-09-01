@@ -33,7 +33,7 @@ def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
     fig, ax = plt.subplots(figsize=(12, 8))
     sp = skyproj.MollweideSkyproj(ax=ax)
     sp.draw_hspmap(hsp_map, vmin = color_lims[0], vmax = color_lims[1])
-    
+
     plt.title(title, pad=25)
     plt.colorbar(shrink=0.5)
 
@@ -43,12 +43,12 @@ def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
         if filename == '':
             filename = title.lower.replace(' ','').replace('-','_').replace(',','_')
         plt.savefig(plots_dir + f'/maps/{filename}.png')
-    
+
     plt.close()
 
 #~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def isochrone_plot(iso, distance_modulus, uncut_data, cut_data, 
-                   title = '', 
+def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
+                   title = '',
                    save = True, filename = ''):
     '''
     Plots a g v g-r CMD with isochrone line on top
@@ -65,21 +65,21 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
     -------
     Pretty plot, saves to plots_dir/isochrones/{tract}_{lsst_survey}_{euclid_survey}.png
     '''
-    
+
     fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
-    
+
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
     #ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
     #ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
-    ax.scatter(uncut_data.g_mag - uncut_data.r_mag, 
+    ax.scatter(uncut_data.g_mag - uncut_data.r_mag,
            uncut_data.g_mag,
            s=10, c = 'r', alpha =0.3,
            label = 'Before cut')
-    ax.scatter(cut_data.g_mag - cut_data.r_mag, 
-               cut_data.g_mag, 
-               s=10, c = 'b', alpha =0.5, 
+    ax.scatter(cut_data.g_mag - cut_data.r_mag,
+               cut_data.g_mag,
+               s=10, c = 'b', alpha =0.5,
                label = 'After cut')
     if title == '':
         title = f'Dist Mod {distance_modulus}, Tract {uncut_data.tract} \n {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data'
@@ -129,9 +129,9 @@ def oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2B
     ax[1].hist(full2Band.mag, bins = b, histtype = 'step', color='k', label = 'All Sources')
     ax[1].set(xlabel=f'{match2Band.str} mag', xlim=(16, 36), ylabel='Number counts', yscale='log',
               title=f'{SecondaryData.release.replace('_',' ').upper()} Sources Match/Unmatch')
-    
+
     plt.legend()
-    
+
     plt.savefig(plots_dir + '/merged_verification/' + f'''1dhistmatches_
                                                           {SearchRegion.nside}_{SearchRegion.pixel}_
                                                           {PrimaryData.release}_{SecondaryData.release}.png''')
@@ -163,8 +163,8 @@ def twoD_hist_matches(SearchRegion, PrimaryData, SecondaryData):
     plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.release}_{SecondaryData.release}.png')
     plt.close()
 
-    
-def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, mag_cut_label=None): 
+
+def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, mag_cut_label=None, ra_limits=None, dec_limits = None):
     '''
     Plots 2-D scatterplot of where *all* the source coordinates of the two surveys are, within 0.01x0.01 deg box
 
@@ -174,6 +174,7 @@ def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, m
     SearchRegion : Region object, has all the attributes to define where this data is looking
     mag_cut (optional) : default None, else mask. A mask of a magnitude cut to be applied, e.g. (i.mag > 24)
     mag_cut_label (optional) : default None, else string. Labels what is the magnitude cut for the title
+    ra_limits, dec_limits (optional) : default None, else a tuple of floats. The coordinate range you wish to plot (ra should be given backwards if a flipped x-axis is desired)
 
     Returns
     --------
@@ -191,20 +192,20 @@ def source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, m
         primarydata = PrimaryData
         secondarydata = SecondaryData
         filename += '.png'
-        
-    plt.scatter(primarydata.ra, primarydata.dec, 
+
+    plt.scatter(primarydata.ra, primarydata.dec,
                 marker = '+', label = f'{primarydata.release.replace('_',' ').upper()}'
                )
-    plt.scatter(secondarydata.ra, secondarydata.dec, 
+    plt.scatter(secondarydata.ra, secondarydata.dec,
                 marker = 'x', label = f'{secondarydata.release.replace('_',' ').upper()}'
                )
-    plt.xlim(np.min(primarydata.ra)+0.01, np.min(primarydata.ra))
+    plt.xlim(np.median(primarydata.ra)+0.01, np.median(primarydata.ra))
     plt.xlabel('RA (deg)')
-    plt.ylim(np.min(primarydata.dec),np.min(primarydata.dec)+0.01)
+    plt.ylim(np.median(primarydata.dec),np.median(primarydata.dec)+0.01)
     plt.ylabel('DEC (deg)')
     #plt.colorbar()
     plt.legend()
-    plt.title('Euclid and LSST before matching, \n restricted i_mag & vis_mag < 22')
+    plt.title(title)
     plt.savefig(plots_dir + '/merged_verification/' + filename)
     plt.close()
 

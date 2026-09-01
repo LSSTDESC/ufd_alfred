@@ -1,7 +1,7 @@
 from alfred import utils
 
 class Data():
-    def __init__(self, data):
+    def __init__(self, data, *args, **kwargs):
         self.data = data
 
     def apply_mask(self, mask):
@@ -18,12 +18,12 @@ class Band():
         self.str = name
 
 class LSSTData(Data):
-    def __init__(self, data, lsst_release):
-        super(LSSTData, self).__init__(data)
+    def __init__(self, data, lsst_release='',**kwargs):
+        super().__init__(data,**kwargs)
         self.release = lsst_release
         #self.tract = tract
         #self.field = utils.get_field(tract)
-        
+
         ## coordinates
         self.ra_limits = (data['coord_ra'].min(), data['coord_ra'].max())
         self.dec_limits = (data['coord_dec'].min(), data['coord_dec'].max())
@@ -46,42 +46,42 @@ class LSSTData(Data):
         self.z_magerr = self.z.magerr
 
     ## morphology
-    def band_psfmincmodel(band, self):
+    def band_psfmincmodel(self, band):
         psf_flux = utils.flux2mag(self.data[f'{band}_psfFlux'])
         cmodel_flux = utils.flux2mag(self.data[f'{band}_cModelFlux'])
         return psf_flux - cmodel_flux
-    def band_psfdivcmodel(band, self):
+    def band_psfdivcmodel(self, band):
         psf_flux = utils.flux2mag(self.data[f'{band}_psfFlux'])
         cmodel_flux = utils.flux2mag(self.data[f'{band}_cModelFlux'])
         return psf_flux / cmodel_flux
-        
+
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
         return LSSTData(new_data, self.release)
 
 class EuclidData(Data):
-    def __init__(self, data, euclid_survey):
-        super(EuclidData, self).__init__(data)
-        self.release = euclid_survey
-        
+    def __init__(self, data, euclid_release='',**kwargs):
+        super().__init__(data, **kwargs)
+        self.release = euclid_release
+
         ## coordinates
         self.ra = data['RIGHT_ASCENSION']
         self.dec = data['DECLINATION']
-    
+
         ## Euclid bands (flux given in mu_Jy)
         num = 2 #as suggested in Zerjal et al
         #convert fluxes to nJy, that's what the flux -> mag functions assume
-        self.VIS = Band(data[f'FLUX_VIS_2FWHM_APER']*(10**3), 
+        self.VIS = Band(data[f'FLUX_VIS_2FWHM_APER']*(10**3),
                         data[f'FLUXERR_VIS_2FWHM_APER']*(10**3),
                         'VIS')
-        self.H = Band(data[f'FLUX_H_2FWHM_APER']*(10**3), 
+        self.H = Band(data[f'FLUX_H_2FWHM_APER']*(10**3),
                       data[f'FLUXERR_H_2FWHM_APER']*(10**3),
                       'H')
-        self.Y = Band(data[f'FLUX_Y_2FWHM_APER']*(10**3), 
+        self.Y = Band(data[f'FLUX_Y_2FWHM_APER']*(10**3),
                       data[f'FLUXERR_Y_2FWHM_APER']*(10**3),
                       'Y')
-        self.J = Band(data[f'FLUX_J_2FWHM_APER']*(10**3), 
+        self.J = Band(data[f'FLUX_J_2FWHM_APER']*(10**3),
                       data[f'FLUXERR_J_2FWHM_APER']*(10**3),
                       'J')
         #then because I have so many functions already defined, some retroactive definitions:
@@ -93,44 +93,46 @@ class EuclidData(Data):
         self.Y_magerr = self.Y.magerr
         self.J_mag = self.J.mag
         self.J_magerr = self.J.magerr
-        
+
         ## morphology
         self.pointlikeprob = data['POINT_LIKE_PROB']
         self.ellipticity = data['ELLIPTICITY']
         self.mumax_minus_mag = self.data['MUMAX_MINUS_MAG']
-        
+
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
         return EuclidData(new_data, self.release)
 
 class DESData(Data):
-    def __init__(self, data, des_survey):
-        super(DESData, self).__init__(data)
-        self.release = des_survey
-        #self.ra = 
-        #self.dec = 
+    def __init__(self, data, des_release='',**kwargs):
+        super(DESData, self).__init__(data,**kwargs)
+        self.release = des_release
+        #self.ra =
+        #self.dec =
         #self.... insert all the bands and morphology here
 
-        
+
 class LSSTnEuclidData(LSSTData, EuclidData):
-    def __init__(self, merged_data, lsst_release, euclid_release, coord_choice='LSST'):
-        LSSTData.__init__(self, merged_data, lsst_release)
+    def __init__(self, merged_data, lsst_release='', euclid_release='', coord_choice='LSST',**kwargs):
+        LSSTData.__init__(self, data=merged_data, lsst_release=lsst_release,euclid_release=euclid_release,**kwargs)
         EuclidData.__init__(self, merged_data, euclid_release)
 
         if coord_choice=='LSST':
-            self.ra = LSSTData.ra
-            self.dec = LSSTData.dec
+            self.ra = merged_data['coord_ra']
+            self.dec = merged_data['coord_dec']
         else:
-            self.ra = EuclidData.ra
-            self.dec = EuclidData.dec
+            self.ra = merged_data['RIGHT_ASCENSION']
+            self.dec = merged_data['DECLINATION']
         self.coord_choice = coord_choice
-        self.release = f'{LSSTData.release}_{EuclidData.release}'
+        self.release = f'{lsst_release}_{euclid_release}'
+        self.lsst_release = lsst_release
+        self.euclid_release = euclid_release
 
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTnEuclidData(new_data, self.release, self.release, coord_choice=self.coord_choice)
+        return LSSTnEuclidData(new_data, self.lsst_release, self.euclid_release, coord_choice=self.coord_choice)
 
 class DESnEuclidData(DESData, EuclidData):
     def __init__(self, merged_data, des_release, euclid_release, coord_choice='DES'):

@@ -4,8 +4,8 @@ import pandas as pd
 import yaml
 import os
 
-from external.ugali.utils import healpix
-from external.astroquery_updated.esa.euclid import Euclid
+from ugali.utils import healpix
+from astroquery_updated.esa.euclid import Euclid
 import healsparse as hsp
 import healpy as hp
 from hpgeom import hpgeom

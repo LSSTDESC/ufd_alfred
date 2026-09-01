@@ -1,5 +1,5 @@
-import external.simple_adl.simple_adl.isochrone as isochrone
-import external.simple_adl.simple_adl.coordinate_tools as coordinate_tools
+import simple_adl.simple_adl.isochrone as isochrone
+import simple_adl.simple_adl.coordinate_tools as coordinate_tools
 from alfred import plotting_functions, utils
 import matplotlib.pyplot as plt
 import numpy as np

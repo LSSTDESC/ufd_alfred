@@ -1,8 +1,8 @@
 setup : #user input
-  where : 'nersc' #usdf or nersc
+  where : 'usdf' #usdf or nersc
   home_dir : #path where I want everything to save
-    nersc : '$HOME/ufd-alfred'
-    usdf : '$HOME/rubin-user/ufd-alfred'
+    nersc : '$HOME/ufd_alfred'
+    usdf : '$HOME/rubin-user/ufd_alfred'
   pckg_dir : 'alfred' #path to the package
   data_dir : 'euclid_data' #path to the external data needed (maps, euclid data, etc)
 output:
@@ -16,8 +16,10 @@ opt_survey : 'lsst_dp2' #or 'lsst dp1' or 'des y6'
 ir_survey : 'euclid_q1' #or 'euclid dr1' or eventually 'roman'
 
 lsst_dp1:
-    repo_config : '/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml'
-    collection : 'LSSTComCam/DP1'
+    repo_config :
+        nersc : '/global/cfs/cdirs/lsst/production/gen3/rubin/DP1/repo/butler.yaml'
+    collection :
+        nersc : 'LSSTComCam/DP1'
     instrument : 'LSSTComCam'
     skymap : 'lsst_cells_v1'
     tract_list : [453, 454, 4849, 5063, 4848, 2394, 2234, 4016, 4017, 4218, 4217, 5525, 5526, 7611, 7610, 7850, 10463, 10464, 10704]
@@ -58,10 +60,10 @@ lsst_dp1:
     s-g separator : '{band}_sizeExtendedness'
 
 lsst_dp2:
-    repo_config : 
+    repo_config :
         nersc : 'dp2'
         usdf : 'dp2_prep'
-    collection : 
+    collection :
         nersc : 'dp2'
         usdf : ['LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage1',
                 'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage2',

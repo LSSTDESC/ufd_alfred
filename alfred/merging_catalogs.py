@@ -4,13 +4,13 @@ import gc
 import sys
 import os
 import yaml
-from alfred import utils, plotting_functions
+from alfred import utils, plotting_functions, DataObjects
 from astropy.table import Table, vstack, join
 #Goes up a directories to get the updated astroquery
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 ?
 #sys.path.append(os.path.abspath('../'))
-from external.ugali.utils.projector import match
+from ugali.utils.projector import match
 ## function to create euclid + rubin datasets and register to the data registry on NERSC
 ## don't know where I want this to live quite yet
 
@@ -36,7 +36,7 @@ with open('config.yaml', 'r') as ymlfile:
 def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, validation_needed = False):
     # I'm thinking that Primary is the one you want to match to (maybe for reasons of less coverage)
     # don't want to assert yet that one is optical and one is ir
-    
+
     file_path = data_dir + f'/merged/{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.release}_{SecondaryData.release}_merged.parquet'
     # function to check if the data doesn't exist already and if I want to rewrite it
     if not utils.check_if_query(file_path, preload):
@@ -44,9 +44,9 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
         merged_table = Table.read(file_path)
     else:
         print('Check tells me to start the merge, starting now')
-    
+
         prim_ra, prim_dec = PrimaryData.ra, PrimaryData.dec
-    
+
         NSIDE=4096
         if SearchRegion.nside == NSIDE:
             print('Warning: might cause some issues that NSIDE is already smallest resolution possible. Make sure to check merge')
@@ -58,10 +58,10 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
         spatial_mask = np.isin(secun_pix4096, prim_upix4096) #enforce [prim_cts > 8]) ?
         SecondaryData_masked = SecondaryData.apply_mask(spatial_mask)
         secun_ra, secun_dec = SecondaryData_masked.ra, SecondaryData_masked.dec
-        
+
         del NSIDE, prim_upix4096, secun_pix4096, spatial_mask, SecondaryData
         gc.collect()
-        
+
         ## match() is a spatial match from ugali tools, tol controls how generous you are in saying the sources overlap
         if len(secun_ra) == 0:
             print('uh oh, no overlap detected')
@@ -75,13 +75,13 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
             print("Something isn't right: those lengths don't match")
         del indexprim, indexsecun, prim_ra, prim_dec, secun_ra, secun_dec
         gc.collect()
-    
+
         ## now merging our matches into one catalog with all LSST and Euclid columns
         matchesPrim.data['_match_id'] = np.arange(len(matchesPrim.data))
         matchesSecun.data['_match_id'] = np.arange(len(matchesSecun.data))
         merged_table = join(matchesPrim.data, matchesSecun.data, keys='_match_id')
         merged_table.write(file_path, format='parquet', overwrite = True)
-    
+
 
     # I don't know how else to do this logic
     if 'lsst' in PrimaryData.release or 'lsst' in SecondaryData_masked.release:
@@ -95,18 +95,21 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
                 except: #if this one runs, it means euclid is primary data
                     match1Band, unmatch1Band, full1Band = matchesPrim.VIS, unmatchedPrim.VIS, PrimaryData.VIS
                     match2Band, unmatch2Band, full2Band = matchesSecun.i, unmatchedSecun.i, SecondaryData_masked.i
-                    merged_df_coord1 = (merged_table['RIGHT_ASCENSION'],merged_table['DECLINATION'])
-                    merged_df_coord2 = (merged_table['coord_ra'],merged_table['coord_dec'])
-                plotting_functions.match_validation_plots(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band,
+                    merged_df_coord1 = (merged_table['RIGHT_ASCENSION'], merged_table['DECLINATION'])
+                    merged_df_coord2 = (merged_table['coord_ra'], merged_table['coord_dec'])
+                plotting_functions.match_validation_plots(match1Band, unmatch1Band, full1Band,
+                                                          match2Band, unmatch2Band, full2Band,
                                                           merged_df_coord1, merged_df_coord2,
                                                           SearchRegion, PrimaryData, SecondaryData_masked
                                                          )
             elif validation_needed==True and preload==True:
                 print('Automatic validation plots on preloaded data are not supported right now. Please run functions manually')
-            mergedData = LSSTnEuclidData(merged_table, PrimaryData.release, SecondaryData_masked.release, coord_choice='LSST')
-    # then more if statements for the other surveys... 
-    
-    del merged_table, matches_prim, matches_secun, unmatched_prim, unmatched_secun, PrimaryData, SecondaryData_masked, ds
+            mergedData = DataObjects.LSSTnEuclidData(merged_table,
+                                                     PrimaryData.release, SecondaryData_masked.release,
+                                                     coord_choice='LSST')
+    # then more if statements for the other surveys...
+
+    del merged_table, matchesPrim, matchesSecun, unmatchedPrim, unmatchedSecun, PrimaryData, SecondaryData_masked, ds
     gc.collect()
-    
+
     return mergedData
