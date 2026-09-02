@@ -37,7 +37,7 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
     # I'm thinking that Primary is the one you want to match to (maybe for reasons of less coverage)
     # don't want to assert yet that one is optical and one is ir
 
-    file_path = data_dir + f'/merged/{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.release}_{SecondaryData.release}_merged.parquet'
+    file_path = data_dir + f'/merged/{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.survey}_{SecondaryData.survey}_merged.parquet'
     # function to check if the data doesn't exist already and if I want to rewrite it
     if not utils.check_if_query(file_path, preload):
         print("Check tells me data exists and you don't want to remerge. Opening existing file now")
@@ -59,7 +59,7 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
         SecondaryData_masked = SecondaryData.apply_mask(spatial_mask)
         secun_ra, secun_dec = SecondaryData_masked.ra, SecondaryData_masked.dec
 
-        del NSIDE, prim_upix4096, secun_pix4096, spatial_mask, SecondaryData
+        del NSIDE, prim_upix4096, secun_pix4096, spatial_mask
         gc.collect()
 
         ## match() is a spatial match from ugali tools, tol controls how generous you are in saying the sources overlap
@@ -84,8 +84,8 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
 
 
     # I don't know how else to do this logic
-    if 'lsst' in PrimaryData.release or 'lsst' in SecondaryData_masked.release:
-        if 'euclid' in PrimaryData.release or 'euclid' in SecondaryData_masked.release:
+    if 'lsst' in PrimaryData.survey or 'lsst' in SecondaryData.survey:
+        if 'euclid' in PrimaryData.survey or 'euclid' in SecondaryData.survey:
             if validation_needed==True and preload==False:
                 try: #if this code runs, it means lsst is primary data
                     match1Band, unmatch1Band, full1Band = matchesPrim.i, unmatchedPrim.i, PrimaryData.i
@@ -100,16 +100,19 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
                 plotting_functions.match_validation_plots(match1Band, unmatch1Band, full1Band,
                                                           match2Band, unmatch2Band, full2Band,
                                                           merged_df_coord1, merged_df_coord2,
+                                                          matchesPrim, matchesSecun,
                                                           SearchRegion, PrimaryData, SecondaryData_masked
                                                          )
+                del matchesPrim, matchesSecun, unmatchedPrim, unmatchedSecun, SecondaryData_masked, ds
+                gc.collect()
             elif validation_needed==True and preload==True:
                 print('Automatic validation plots on preloaded data are not supported right now. Please run functions manually')
             mergedData = DataObjects.LSSTnEuclidData(merged_table,
-                                                     PrimaryData.release, SecondaryData_masked.release,
+                                                     PrimaryData.survey, SecondaryData.survey,
                                                      coord_choice='LSST')
     # then more if statements for the other surveys...
 
-    del merged_table, matchesPrim, matchesSecun, unmatchedPrim, unmatchedSecun, PrimaryData, SecondaryData_masked, ds
+    del merged_table, PrimaryData, SecondaryData
     gc.collect()
 
     return mergedData

@@ -1,5 +1,5 @@
 setup : #user input
-  where : 'usdf' #usdf or nersc
+  where : 'nersc' #usdf or nersc
   home_dir : #path where I want everything to save
     nersc : '$HOME/ufd_alfred'
     usdf : '$HOME/rubin-user/ufd_alfred'

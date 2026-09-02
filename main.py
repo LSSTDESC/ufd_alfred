@@ -5,6 +5,7 @@ import gc
 import numpy as np
 from astropy.coordinates import SkyCoord
 from lsst.daf.butler import Butler
+from simple_adl import coordinate_tools
 from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools, plotting_functions, mapmaking
 
 #-----------------------------------
@@ -60,9 +61,9 @@ if 'euclid' in ir_survey:
 
 ## Merge Catalogs and Clean Up Memory
 mergedData_raw = merging_catalogs.merge_catalogs(OptData, IRData, SearchRegion,
-                                                 preload = False, validation_needed = True)
-print('Merged catalogs (somehow)')
-del OptData, IRData #don't worry, these things are saved in the SearchRegion (uncleaned but still, saved)
+                                                 preload = True, validation_needed = False)
+print('Merging catalogs completed')
+del OptData, IRData #have to think if I'll need these again, can perhaps save them in Region obj
 gc.collect()
 
 ## Clean Up Quality -- this will depend on which surveys are being used
@@ -82,7 +83,8 @@ if 'euclid' in ir_survey:
 total_mask = snr_mask & opt_flag_mask & ir_flag_mask
 ## clean up data
 mergedData = mergedData_raw.apply_mask(total_mask)
-SearchRegion.data[opt_survey+'-'+ir_survey] = mergedData
+SearchRegion.data_dict[opt_survey+'-'+ir_survey] = mergedData
+print('Data cleaned and stored')
 
 ## Select for Stars -- Zerjal + colorcolor Cuts
 colorcolor_mask = masks_and_filters.niroptical_color_stars(mergedData)
@@ -90,7 +92,9 @@ morphology_mask = masks_and_filters.Zerjal_stars(mergedData)
 morphncolor_mask = colorcolor_mask & morphology_mask
 # no one cared who I was til I put on the mask
 stars = mergedData.apply_mask(morphncolor_mask)
-#should I add a stars attribute to the region?
+SearchRegion.data_dict['stellar catalog'] = stars
+SearchRegion.data = stars
+print('Stellar catalog made')
 
 ## Some S-G validation plots - NEEDS TO BE UPDATED
 """
@@ -117,7 +121,26 @@ plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 
                                 save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
 print('S-G plots ran and saved')
 """
-## hotspot search - includes isochrone cut, density, smoothing, peak fitting, etc
+## hotspot search
+#distance_array=np.arange(50,1000,50) #distance is given in kpc
+distance_array = [400]
+for distance in distance_array:
+    distance_modulus = coordinate_tools.distanceToDistanceModulus(distance)
+    iso_sel, iso_stars = search_tools.isochrone_search(stars.g, stars.r, 
+                                                       distance_modulus, stars,
+                                                       age=12.0, Z=0.0002, 
+                                                       save_graph=False)
+    results = search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel)
+            #survey isn't actually used? so maybe just str?
+            #region is an object, I think I've added all the attributes and methods necessary to use their functions
+    print(results)
+'''
+    ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array = np.asarray(results)
+    if len(results[3]) == 0:
+        return
+    best_ra_peak, best_dec_peak, best_r_peak, best_distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak, best_sig_peak = 0, 0, 0, 0, 0, 0, 0, 0
+    for i in range(len(results[0])): #this is how long the array is
+'''        
 
 ## need fracdet eventually, but not prioritizing for now
 # maybe put these functions as methods of region object

@@ -137,7 +137,7 @@ def oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2B
                                                           {PrimaryData.release}_{SecondaryData.release}.png''')
     plt.close()
 
-def twoD_hist_matches(SearchRegion, PrimaryData, SecondaryData):
+def twoD_hist_matches(SearchRegion, matchPrimaryData, matchSecondaryData):
     '''
     Plots 2 two-dimensional histograms of matched sources for 2 surveys
 
@@ -152,15 +152,15 @@ def twoD_hist_matches(SearchRegion, PrimaryData, SecondaryData):
     Saves to plots_dir/merged_verification/2dhist_{nside}_{pixel}_{primary survey}_{secondary survey}.png
     '''
     fig, ax = plt.subplots(1,2, figsize=(13,5))
-    _, _, _, im = ax[0].hist2d(PrimaryData.ra, PrimaryData.dec, bins=100)
+    _, _, _, im = ax[0].hist2d(matchPrimaryData.ra, matchPrimaryData.dec, bins=100)
     plt.colorbar(im, ax=ax[0])
-    ax[0].set(title = f'Matches in {PrimaryData.release.replace('_',' ').upper()}', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+    ax[0].set(title = f'Matches in {matchPrimaryData.release.replace('_',' ').upper()}', ylabel = "Dec (deg)", xlabel = "RA (deg)")
     ax[0].invert_xaxis()
-    _, _, _, im = ax[1].hist2d(SecondaryData.ra, SecondaryData.dec, bins=100)
+    _, _, _, im = ax[1].hist2d(matchSecondaryData.ra, matchSecondaryData.dec, bins=100)
     plt.colorbar(im, ax=ax[1])
-    ax[1].set(title = f'Matches in {SecondaryData.release.replace('_',' ').upper()}', ylabel = "Dec (deg)", xlabel = "RA (deg)")
+    ax[1].set(title = f'Matches in {matchSecondaryData.release.replace('_',' ').upper()}', ylabel = "Dec (deg)", xlabel = "RA (deg)")
     ax[1].invert_xaxis()
-    plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{SearchRegion.nside}_{SearchRegion.pixel}_{PrimaryData.release}_{SecondaryData.release}.png')
+    plt.savefig(plots_dir + '/merged_verification/' + '2dhist_' + f'{SearchRegion.nside}_{SearchRegion.pixel}_{matchPrimaryData.release}_{matchSecondaryData.release}.png')
     plt.close()
 
 
@@ -257,6 +257,7 @@ def coord_diff_hist(merged_df_coord1, merged_df_coord2, PrimaryData, SecondaryDa
 def match_validation_plots(match1Band, unmatch1Band, full1Band,
                            match2Band, unmatch2Band, full2Band,
                            merged_df_coord1, merged_df_coord2,
+                           matchPrim, matchSecun,
                            SearchRegion, PrimaryData, SecondaryData):
     '''
     All the outputs from the merging_catalogs function going into different validation plots
@@ -283,7 +284,7 @@ def match_validation_plots(match1Band, unmatch1Band, full1Band,
 
     oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band,
                       SearchRegion, PrimaryData, SecondaryData)
-    twoD_hist_matches(SearchRegion, PrimaryData, SecondaryData)
+    twoD_hist_matches(SearchRegion, matchPrim, matchSecun)
     source_scatterplot(PrimaryData, SecondaryData, SearchRegion, mag_cut=None, mag_cut_label=None)
     coord_diff_hist(merged_df_coord1, merged_df_coord2, PrimaryData, SecondaryData, SearchRegion, ds=None)
     print('Match validation plots ran and saved')

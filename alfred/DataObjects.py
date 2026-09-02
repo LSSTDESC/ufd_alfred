@@ -18,9 +18,10 @@ class Band():
         self.str = name
 
 class LSSTData(Data):
-    def __init__(self, data, lsst_release='',**kwargs):
+    def __init__(self, data, lsst_survey='',**kwargs):
         super().__init__(data,**kwargs)
-        self.release = lsst_release
+        self.release = lsst_survey
+        self.survey = lsst_survey
         #self.tract = tract
         #self.field = utils.get_field(tract)
 
@@ -29,6 +30,8 @@ class LSSTData(Data):
         self.dec_limits = (data['coord_dec'].min(), data['coord_dec'].max())
         self.ra = data['coord_ra']
         self.dec = data['coord_dec']
+        self.basis1 = data['coord_ra']
+        self.basis2 = data['coord_dec']
 
         ## Rubin bands
         self.g = Band(data['g_psfFlux'], data['g_psfFlux'], 'g')
@@ -58,16 +61,20 @@ class LSSTData(Data):
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTData(new_data, self.release)
+        return LSSTData(new_data, self.survey)
 
 class EuclidData(Data):
-    def __init__(self, data, euclid_release='',**kwargs):
+    def __init__(self, data, euclid_survey='',**kwargs):
         super().__init__(data, **kwargs)
-        self.release = euclid_release
+        self.release = euclid_survey
+        self.survey = euclid_survey #I realized release might be more confusing than survey? 
+                                    #will try to fix where I use .release attribute
 
         ## coordinates
         self.ra = data['RIGHT_ASCENSION']
         self.dec = data['DECLINATION']
+        self.basis1 = data['RIGHT_ASCENSION']
+        self.basis2 = data['DECLINATION']
 
         ## Euclid bands (flux given in mu_Jy)
         num = 2 #as suggested in Zerjal et al
@@ -114,9 +121,9 @@ class DESData(Data):
 
 
 class LSSTnEuclidData(LSSTData, EuclidData):
-    def __init__(self, merged_data, lsst_release='', euclid_release='', coord_choice='LSST',**kwargs):
-        LSSTData.__init__(self, data=merged_data, lsst_release=lsst_release,euclid_release=euclid_release,**kwargs)
-        EuclidData.__init__(self, merged_data, euclid_release)
+    def __init__(self, merged_data, lsst_survey='', euclid_survey='', coord_choice='LSST',**kwargs):
+        LSSTData.__init__(self, data=merged_data, lsst_survey=lsst_survey,euclid_survey=euclid_survey,**kwargs)
+        EuclidData.__init__(self, merged_data, euclid_survey)
 
         if coord_choice=='LSST':
             self.ra = merged_data['coord_ra']
@@ -125,33 +132,41 @@ class LSSTnEuclidData(LSSTData, EuclidData):
             self.ra = merged_data['RIGHT_ASCENSION']
             self.dec = merged_data['DECLINATION']
         self.coord_choice = coord_choice
-        self.release = f'{lsst_release}_{euclid_release}'
-        self.lsst_release = lsst_release
-        self.euclid_release = euclid_release
+        self.release = f'{lsst_survey}_{euclid_survey}'
+        self.survey = f'{lsst_survey}_{euclid_survey}'
+        self.lsst_release = lsst_survey
+        self.euclid_release = euclid_survey
+        self.lsst_survey = lsst_survey
+        self.euclid_survey = euclid_survey
 
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTnEuclidData(new_data, self.lsst_release, self.euclid_release, coord_choice=self.coord_choice)
+        return LSSTnEuclidData(new_data, self.lsst_survey, self.euclid_survey, coord_choice=self.coord_choice)
 
 class DESnEuclidData(DESData, EuclidData):
-    def __init__(self, merged_data, des_release, euclid_release, coord_choice='DES'):
-        DESData.__init__(self, merged_data, des_release)
-        EuclidData.__init__(self, merged_data, euclid_release)
+    def __init__(self, merged_data, des_survey='', euclid_survey='', coord_choice='DES',**kwargs):
+        DESData.__init__(self, data=merged_data, des_survey=des_survey,euclid_survey=euclid_survey,**kwargs)
+        EuclidData.__init__(self, merged_data, euclid_survey)
 
         if coord_choice=='DES':
-            self.ra = DESData.ra
-            self.dec = DESData.dec
+            self.ra = merged_data['ra'] #tbd when we query
+            self.dec = merged_data['dec']
         else:
-            self.ra = EuclidData.ra
-            self.dec = EuclidData.dec
+            self.ra = merged_data['RIGHT_ASCENSION']
+            self.dec = merged_data['DECLINATION']
         self.coord_choice = coord_choice
-        self.release = f'{DESData.release}_{EuclidData.release}'
+        self.release = f'{des_survey}_{euclid_survey}'
+        self.survey = f'{des_survey}_{euclid_survey}'
+        self.des_release = des_survey
+        self.euclid_release = euclid_survey
+        self.des_survey = des_survey
+        self.euclid_survey = euclid_survey
 
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return DESnEuclidData(new_data, coord_choice=self.coord_choice)
+        return DESnEuclidData(new_data, self.des_survey, self.euclid_survey, coord_choice=self.coord_choice)
         
 '''
 class LSSTnEuclidData(LSSTData):
@@ -200,7 +215,8 @@ class LSSTnEuclidData(LSSTData):
 '''
 
 class Peaks(): #TO BUILD
-    def __init__(self, x, y, angsep):
+    def __init__(self, results):
+        # results = ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array
         self.x = x
         self.y = y
         self.angsep = angsep
@@ -212,19 +228,5 @@ class Peaks(): #TO BUILD
         self.n_obs = 0
         self.n_obs_half = 0
         self.n_model = 0
-
-    def compute_local_char_density():
-        # takes in nside, data, characteristic density, ra, dec, mag_max, and a fracdet map (x, y needed but already attributes)
-        # finds and returns local characteristic density
-        return None
-        
-    def fit_aperature():
-        #takes in a projection, distance, local characteristic density, (x, y, angsep needed but already attributes)
-        #finds and returns ra_peaks, dec_peaks, r_peaks, sig_peaks, distance_moduli, n_obs_peaks, n_obs_half_peaks, n_model_peaks (makes these attributes)
-        #but there also may be multiples so i'd have to think how to handle those....
-        return None
-
-#eventually I want to have an array/list of Peak objects
-
     
 
