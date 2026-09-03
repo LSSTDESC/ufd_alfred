@@ -12,8 +12,10 @@ import scipy
 from alfred import utils, DataObjects
 
 from astroquery_updated.esa.euclid import Euclid
+#from astroquery_updated.utils.tap import TapPlus
+from pyvo.dal.tap import TAPService
 from ugali.utils import healpix
-import simple_adl.projector as projector
+import simple_adl.simple_adl.projector as projector
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 or 10?
 
@@ -21,13 +23,14 @@ with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     where = cfg['setup']['where']
     opt_survey = cfg['opt_survey']
-    skymap = cfg[opt_survey]['skymap']
-    repo_config = cfg[opt_survey]['repo_config'][where]
-    collection = cfg[opt_survey]['collection'][where]
+    ir_survey = cfg['ir_survey']
+    if 'lsst' in opt_survey:
+        skymap = cfg[opt_survey]['skymap']
+        repo_config = cfg[opt_survey]['repo_config'][where]
+        collection = cfg[opt_survey]['collection'][where]
     data_dir = os.path.join(os.path.expandvars(cfg['setup']['home_dir'][where]), cfg['setup']['data_dir'])
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
-    ir_survey = cfg['ir_survey']
 
 class Region():
     #for sharding data into large healpy pixel regions
@@ -76,6 +79,7 @@ class Region():
         2. "list of tuples" - returns what it sounds like, a list of tuples of format [(ra,dec)...]
             if the return_type is given as just "list", function will default to this
         3. "SkyCoord list" - returns list of SkyCoord objects
+        4. "coord-separated list" - returns 2 lists, one for ras, one for decs
 
         all ra and dec are in degrees (hopefully)
         '''
@@ -96,6 +100,8 @@ class Region():
             for ra, dec in zip(ra_arr, dec_arr):
                 border_list.append(SkyCoord(ra*u.deg, dec*u.deg, frame='icrs'))
             return border_list
+        elif return_type=='coord-separated list':
+            return ra_arr, dec_arr
         else:
             print('Type not supported by region_borders function. Please input string, list of tuples, or SkyCoord list')
             return None
@@ -169,8 +175,6 @@ class Region():
                          POLYGON('ICRS', {self.region_borders(return_type='string',step=1)})) = 1'''
     
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-            if not os.path.exists(data_dir + f'/{ir_survey}'):
-                os.mkdir(data_dir + f'/{ir_survey}')
             results_table.write(data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet',
                                    format='parquet', overwrite = True)
         #storing it as the euclid object so we have access to attributes
@@ -179,7 +183,7 @@ class Region():
         
         return results
 
-    def des_query():
+    def des_query(self, INCOLS, preload = True):
         '''
         thinking that this would be really similar to the Euclid function in form
         taking in the columns, using the region borders, returning results/updating attributes
@@ -187,6 +191,38 @@ class Region():
         self.data[DES survey] = DESData(query_result)
         return query_result
         '''
+        if not os.path.exists(data_dir + f'/{opt_survey}'):
+            print("no DES data folder, making one now")
+            os.mkdir(data_dir + f'/{opt_survey}')
+        
+        file_dir = data_dir + f'/{opt_survey}/{self.nside}_{self.pixel}_des.parquet'
+        if not utils.check_if_query(file_dir, preload):
+            print("Check tells me DES data exists and you don't want to overwrite. Opening existing file now")
+            desData = DataObjects.DESData(Table.read(file_dir), opt_survey)
+        else:
+            print("Check tells me DES data doesn't exist or you do want to overwrite, querying now")
+            
+            tap = TAPService("https://datalab.noirlab.edu/tap")
+            ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=1)
+            query = f'''SELECT {INCOLS} FROM des_dr2.y6_gold
+                        WHERE ra BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
+                        AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
+            job = tap.run_async(query)
+            results_table = job.to_table()
+
+            '''
+            #des_dr2.y6_gold?
+            from dl import queryClient as qc
+            results_table = qc.query(query, fmt = 'table', qtype='adql', verbose=False)
+            '''
+            resultsData = DataObjects.DESData(results_table, opt_survey)
+            desData = self.region_cut(resultsData)
+            desData.data.write(data_dir + f'/{opt_survey}/{self.nside}_{self.pixel}_des.parquet',
+                                   format='parquet', overwrite = True)
+        #storing it as the des object so we have access to attributes
+        self.data_dict[opt_survey] = desData
+        
+        return desData
 
 # BELOW METHODS ARE COPIED AND MODIFIED FROM SIMPLE_ADL TO MAKE REGION OBJECT MATCH THEIRS
     # couldn't just directly use it because it's part of a Region object which I'm initializing differently...

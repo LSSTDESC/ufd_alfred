@@ -26,9 +26,10 @@ with open('config.yaml', 'r') as ymlfile:
         os.mkdir(data_dir+'/maps')
     
     opt_survey = cfg['opt_survey']
-    collection = cfg[opt_survey]['collection'][where]
-    skymap = cfg[opt_survey]['skymap']
-    
+    if 'lsst' in opt_survey:
+        collection = cfg[opt_survey]['collection'][where]
+        skymap = cfg[opt_survey]['skymap']
+        
 
 ## which Rubin map do I want??
 

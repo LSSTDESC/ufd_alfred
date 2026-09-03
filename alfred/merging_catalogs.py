@@ -83,9 +83,9 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
         merged_table.write(file_path, format='parquet', overwrite = True)
 
 
-    # I don't know how else to do this logic
-    if 'lsst' in PrimaryData.survey or 'lsst' in SecondaryData.survey:
-        if 'euclid' in PrimaryData.survey or 'euclid' in SecondaryData.survey:
+    # I don't know how else to do this logic 
+    if 'euclid' in PrimaryData.survey or 'euclid' in SecondaryData.survey:
+        if 'lsst' in PrimaryData.survey or 'lsst' in SecondaryData.survey:
             if validation_needed==True and preload==False:
                 try: #if this code runs, it means lsst is primary data
                     match1Band, unmatch1Band, full1Band = matchesPrim.i, unmatchedPrim.i, PrimaryData.i
@@ -110,6 +110,31 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
             mergedData = DataObjects.LSSTnEuclidData(merged_table,
                                                      PrimaryData.survey, SecondaryData.survey,
                                                      coord_choice='LSST')
+        elif 'des' in PrimaryData.survey or 'des' in SecondaryData.survey:
+            if validation_needed==True and preload==False:
+                try: #if this code runs, it means des is primary data
+                    match1Band, unmatch1Band, full1Band = matchesPrim.i, unmatchedPrim.i, PrimaryData.i
+                    match2Band, unmatch2Band, full2Band = matchesSecun.VIS, unmatchedSecun.VIS, SecondaryData_masked.VIS
+                    merged_df_coord1 = (merged_table['alphawin_j2000'],merged_table['deltawin_j2000'])
+                    merged_df_coord2 = (merged_table['RIGHT_ASCENSION'],merged_table['DECLINATION'])
+                except: #if this one runs, it means euclid is primary data
+                    match1Band, unmatch1Band, full1Band = matchesPrim.VIS, unmatchedPrim.VIS, PrimaryData.VIS
+                    match2Band, unmatch2Band, full2Band = matchesSecun.i, unmatchedSecun.i, SecondaryData_masked.i
+                    merged_df_coord1 = (merged_table['RIGHT_ASCENSION'], merged_table['DECLINATION'])
+                    merged_df_coord2 = (merged_table['alphawin_j2000'],merged_table['deltawin_j2000'])
+                plotting_functions.match_validation_plots(match1Band, unmatch1Band, full1Band,
+                                                          match2Band, unmatch2Band, full2Band,
+                                                          merged_df_coord1, merged_df_coord2,
+                                                          matchesPrim, matchesSecun,
+                                                          SearchRegion, PrimaryData, SecondaryData_masked
+                                                         )
+                del matchesPrim, matchesSecun, unmatchedPrim, unmatchedSecun, SecondaryData_masked, ds
+                gc.collect()
+            elif validation_needed==True and preload==True:
+                print('Automatic validation plots on preloaded data are not supported right now. Please run functions manually')
+            mergedData = DataObjects.DESnEuclidData(merged_table,
+                                                     PrimaryData.survey, SecondaryData.survey,
+                                                     coord_choice='DES')
     # then more if statements for the other surveys...
 
     del merged_table, PrimaryData, SecondaryData

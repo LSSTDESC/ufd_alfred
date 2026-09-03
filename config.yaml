@@ -12,7 +12,7 @@ output:
 nside : 32
 
 #change with new data releases
-opt_survey : 'lsst_dp2' #or 'lsst dp1' or 'des y6'
+opt_survey : 'des_y6' #or 'lsst_dp1' or 'des_y6'
 ir_survey : 'euclid_q1' #or 'euclid dr1' or eventually 'roman'
 
 lsst_dp1:
@@ -98,8 +98,7 @@ euclid_q1:
               'FLUX_VIS_PSF', 'FLUXERR_VIS_PSF', 'FLAG_{band}', 'FLUX_{band}_2FWHM_APER', 'FLUXERR_{band}_2FWHM_APER']
 
 des_y6:
-    bands :
-    INCOLS :
-    repo_config : 0
-    collection : 0
+    bands : 'grizy'
+    INCOLS : ['coadd_object_id', 'alphawin_j2000', 'deltawin_j2000', 'psf_mag_aper_8_{band}_corrected', 'psf_mag_err_aper_8_{band}', 
+              'flags_foreground', 'flags_footprint', 'flags_gold', 'ext_mash']
 

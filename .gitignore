@@ -1,4 +1,16 @@
 .ipynb_checkpoints/
+simple/
+ugali/
+euclid_data/
+alfred_venv
+__pycache__/
+usdf_pipeline_tests.ipynb
+nersc_pipeline_tests.ipynb
+euclid_data/
+simple_adl/
+simple/
+ugali/
+astroquery_updated/.ipynb_checkpoints/
 __pycache__/
 usdf_pipeline_tests.ipynb
 nersc_pipeline_tests.ipynb

@@ -1,4 +1,4 @@
-import simple_adl.isochrone as isochrone
+import simple_adl.simple_adl.isochrone as isochrone
 from alfred import plotting_functions, utils
 import matplotlib.pyplot as plt
 import numpy as np
@@ -95,7 +95,7 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.01, mag_max = 26,
 
 def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None, verbose=True):
     #credit to the authors of simple_adl-- I had to copy/paste to avoid things in their package overriding my config file variables
-    #and I had to adjust one thing to get it working with my Region object
+    #and I had to adjust one thing to get it working with my Region object: changed the line if (len)
     """
     Idea: 
     Send a data extension that goes to faint magnitudes, e.g., g < 24.

@@ -1,4 +1,5 @@
 from alfred import utils
+from simple_adl.simple_adl import coordinate_tools
 
 class Data():
     def __init__(self, data, *args, **kwargs):
@@ -10,11 +11,13 @@ class Data():
         return Data(new_data)
 
 class Band():
-    def __init__(self, flux, fluxerr, name):
-        self.flux = flux
-        self.fluxerr = fluxerr
-        self.mag = utils.flux2mag(flux)
-        self.magerr = utils.fluxerr2magerr(flux, fluxerr)
+    def __init__(self, val, valerr, name, input_type='flux'):
+        if input_type=='flux':
+            self.mag = utils.flux2mag(val)
+            self.magerr = utils.fluxerr2magerr(val, valerr)
+        elif input_type=='mag':
+            self.mag = val
+            self.magerr = valerr
         self.str = name
 
 class LSSTData(Data):
@@ -34,10 +37,10 @@ class LSSTData(Data):
         self.basis2 = data['coord_dec']
 
         ## Rubin bands
-        self.g = Band(data['g_psfFlux'], data['g_psfFlux'], 'g')
-        self.r = Band(data['r_psfFlux'], data['r_psfFlux'], 'r')
-        self.i = Band(data['i_psfFlux'], data['i_psfFlux'], 'i')
-        self.z = Band(data['z_psfFlux'], data['z_psfFlux'], 'z')
+        self.g = Band(data['g_psfFlux'], data['g_psfFluxErr'], 'g')
+        self.r = Band(data['r_psfFlux'], data['r_psfFluxErr'], 'r')
+        self.i = Band(data['i_psfFlux'], data['i_psfFluxErr'], 'i')
+        self.z = Band(data['z_psfFlux'], data['z_psfFluxErr'], 'z')
         #then because I have so many functions already defined, some retroactive definitions:
         self.g_mag = self.g.mag
         self.g_magerr = self.g.magerr
@@ -112,18 +115,45 @@ class EuclidData(Data):
         return EuclidData(new_data, self.release)
 
 class DESData(Data):
-    def __init__(self, data, des_release='',**kwargs):
+    def __init__(self, data, des_survey='',**kwargs):
         super(DESData, self).__init__(data,**kwargs)
-        self.release = des_release
-        #self.ra =
-        #self.dec =
-        #self.... insert all the bands and morphology here
+        self.release = des_survey
+        self.survey = des_survey
+        
+        ## coordinates
+        self.ra_limits = (data['alphawin_j2000'].min(), data['alphawin_j2000'].max())
+        self.dec_limits = (data['deltawin_j2000'].min(), data['deltawin_j2000'].max())
+        self.ra = data['alphawin_j2000']
+        self.dec = data['deltawin_j2000']
+        self.basis1 = data['alphawin_j2000']
+        self.basis2 = data['deltawin_j2000']
+
+        ## DES bands
+        self.g = Band(data['psf_mag_aper_8_g_corrected'], data['psf_mag_err_aper_8_g'], 'g', input_type='mag')
+        self.r = Band(data['psf_mag_aper_8_r_corrected'], data['psf_mag_err_aper_8_r'], 'r', input_type='mag')
+        self.i = Band(data['psf_mag_aper_8_i_corrected'], data['psf_mag_err_aper_8_i'], 'i', input_type='mag')
+        self.z = Band(data['psf_mag_aper_8_z_corrected'], data['psf_mag_err_aper_8_z'], 'z', input_type='mag')
+        self.y = Band(data['psf_mag_aper_8_y_corrected'], data['psf_mag_err_aper_8_y'], 'y', input_type='mag')
+        #then because I have so many functions already defined, some retroactive definitions:
+        self.g_mag = self.g.mag
+        self.g_magerr = self.g.magerr
+        self.r_mag = self.r.mag
+        self.r_magerr = self.r.magerr
+        self.i_mag = self.i.mag
+        self.i_magerr = self.i.magerr
+        self.z_mag = self.z.mag
+        self.z_magerr = self.z.magerr
+        
+    def apply_mask(self, mask):
+        ## takes in a mask, applies it to the df, then returns another Data object
+        new_data = self.data[mask]
+        return DESData(new_data, self.survey)
 
 
 class LSSTnEuclidData(LSSTData, EuclidData):
-    def __init__(self, merged_data, lsst_survey='', euclid_survey='', coord_choice='LSST',**kwargs):
-        LSSTData.__init__(self, data=merged_data, lsst_survey=lsst_survey,euclid_survey=euclid_survey,**kwargs)
-        EuclidData.__init__(self, merged_data, euclid_survey)
+    def __init__(self, merged_data, lsst_survey='', euclid_survey='', coord_choice='LSST', **kwargs):
+        LSSTData.__init__(self, data=merged_data, lsst_survey=lsst_survey, euclid_survey=euclid_survey, **kwargs)
+        EuclidData.__init__(self, data=merged_data, euclid_survey=euclid_survey)
 
         if coord_choice=='LSST':
             self.ra = merged_data['coord_ra']
@@ -146,12 +176,12 @@ class LSSTnEuclidData(LSSTData, EuclidData):
 
 class DESnEuclidData(DESData, EuclidData):
     def __init__(self, merged_data, des_survey='', euclid_survey='', coord_choice='DES',**kwargs):
-        DESData.__init__(self, data=merged_data, des_survey=des_survey,euclid_survey=euclid_survey,**kwargs)
+        DESData.__init__(self, data=merged_data, des_survey=des_survey, euclid_survey=euclid_survey,**kwargs)
         EuclidData.__init__(self, merged_data, euclid_survey)
 
         if coord_choice=='DES':
-            self.ra = merged_data['ra'] #tbd when we query
-            self.dec = merged_data['dec']
+            self.ra = merged_data['alphawin_j2000']
+            self.dec = merged_data['deltawin_j2000']
         else:
             self.ra = merged_data['RIGHT_ASCENSION']
             self.dec = merged_data['DECLINATION']
@@ -167,6 +197,20 @@ class DESnEuclidData(DESData, EuclidData):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
         return DESnEuclidData(new_data, self.des_survey, self.euclid_survey, coord_choice=self.coord_choice)
+
+class Peak(): #TO BUILD
+    def __init__(self, results_T):
+        #results_T = ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak
+        self.ra = results_T[0]
+        self.dec = results_T[1]
+        self.r = results_T[2]
+        self.sig = results_T[3]
+        self.distance_modulus = results_T[4]
+        self.distance = coordinate_tools.distanceModulusToDistance(results_T[4])
+        self.n_obs = results_T[5]
+        self.n_obs_half = results_T[6]
+        self.n_model = results_T[7]
+
         
 '''
 class LSSTnEuclidData(LSSTData):
@@ -214,19 +258,6 @@ class LSSTnEuclidData(LSSTData):
         return LSSTnEuclidData(new_data, self.lsst_survey, self.euclid_survey, self.tract)
 '''
 
-class Peaks(): #TO BUILD
-    def __init__(self, results):
-        # results = ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array
-        self.x = x
-        self.y = y
-        self.angsep = angsep
-        self.ra = 0
-        self.dec = 0
-        self.r = 0
-        self.sig = 0
-        self.dist = 0
-        self.n_obs = 0
-        self.n_obs_half = 0
-        self.n_model = 0
+
     
 

@@ -5,7 +5,7 @@ import gc
 import numpy as np
 from astropy.coordinates import SkyCoord
 from lsst.daf.butler import Butler
-from simple_adl import coordinate_tools
+from simple_adl.simple_adl import coordinate_tools
 from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools, plotting_functions, mapmaking
 
 #-----------------------------------
@@ -30,33 +30,35 @@ with open('config.yaml', 'r') as ymlfile:
 
     opt_survey = cfg['opt_survey']
     ir_survey = cfg['ir_survey']
-    repo_config = cfg[opt_survey]['repo_config'][where]
-    collection = cfg[opt_survey]['collection'][where]
+    if 'lsst' in opt_survey:
+        repo_config = cfg[opt_survey]['repo_config'][where]
+        collection = cfg[opt_survey]['collection'][where]
     #tract_list = cfg[survey]['tract_list']
-    INCOLS1 = cfg[opt_survey]['INCOLS']
+    opt_INCOLS = cfg[opt_survey]['INCOLS']
     opt_bands = cfg[opt_survey]['bands']
-    INCOLS2 = cfg[ir_survey]['INCOLS']
+    ir_INCOLS = cfg[ir_survey]['INCOLS']
     ir_bands = cfg[ir_survey]['bands']
 
 ## Define Which Area We're Looking At -- by nside and by coordinate
 coord = (53.16, -28.10) #just using ECDFS center for now
 SearchRegion = RegionObjects.Region(nside, coord)
 
-## Define Which Columns to Pull Up From Data
-opt_INCOLS = utils.columns_to_query(INCOLS1, opt_bands, output_type='list')
-ir_INCOLS = utils.columns_to_query(INCOLS2, ir_bands, output_type = 'string')
-
-
-## Load Rubin Data -- means repo_config and collection are defined and we can use butler
-if repo_config != 0 and collection != 0:
+## Load Rubin Data
+if 'lsst' in opt_survey:
+    INCOLS = utils.columns_to_query(opt_INCOLS, opt_bands, output_type='list')
     ## Initiate the Butler Instance
     butler = Butler(repo_config, collections=collection)
     #SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
     tract_arr = SearchRegion.get_rubin_tracts(butler)
-    OptData = SearchRegion.rubin_query(butler, tract_arr, opt_INCOLS)
+    OptData = SearchRegion.rubin_query(butler, tract_arr, INCOLS)
+## or Load DES Data
+elif 'des' in opt_survey:
+    INCOLS = utils.columns_to_query(opt_INCOLS, opt_bands, output_type='string')
+    OptData = SearchRegion.des_query(INCOLS, preload=True)
 ## Load Euclid Data
 if 'euclid' in ir_survey:
-    IRData = SearchRegion.euclid_query(ir_INCOLS, preload = True)
+    INCOLS = utils.columns_to_query(ir_INCOLS, ir_bands, output_type = 'string')
+    IRData = SearchRegion.euclid_query(INCOLS, preload = True)
 # the queries return the data as their respective objects
 
 ## Merge Catalogs and Clean Up Memory
@@ -130,11 +132,16 @@ for distance in distance_array:
                                                        distance_modulus, stars,
                                                        age=12.0, Z=0.0002, 
                                                        save_graph=False)
-    results = search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel)
+    results = np.asarray(search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, verbose = False))
             #survey isn't actually used? so maybe just str?
             #region is an object, I think I've added all the attributes and methods necessary to use their functions
-    print(results)
+    results_transpose = results.T
+    Peaks = []
+    for i in range(len(np.shape(results_transpose))):
+        #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]
+        Peaks.append(DataObjects.Peak(results_transpose[i]))
 '''
+=
     ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array = np.asarray(results)
     if len(results[3]) == 0:
         return
