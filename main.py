@@ -5,7 +5,7 @@ import gc
 import numpy as np
 from astropy.coordinates import SkyCoord
 from lsst.daf.butler import Butler
-from simple_adl.simple_adl import coordinate_tools
+from ugali.utils import projector
 from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools, plotting_functions, mapmaking
 
 #-----------------------------------
@@ -127,7 +127,7 @@ print('S-G plots ran and saved')
 #distance_array=np.arange(50,1000,50) #distance is given in kpc
 distance_array = [400]
 for distance in distance_array:
-    distance_modulus = coordinate_tools.distanceToDistanceModulus(distance)
+    distance_modulus = projector.distanceToDistanceModulus(distance)
     iso_sel, iso_stars = search_tools.isochrone_search(stars.g, stars.r, 
                                                        distance_modulus, stars,
                                                        age=12.0, Z=0.0002, 

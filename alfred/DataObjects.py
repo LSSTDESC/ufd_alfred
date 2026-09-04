@@ -1,5 +1,5 @@
 from alfred import utils
-from simple_adl.simple_adl import coordinate_tools
+from ugali.utils import projector
 
 class Data():
     def __init__(self, data, *args, **kwargs):
@@ -206,7 +206,7 @@ class Peak(): #TO BUILD
         self.r = results_T[2]
         self.sig = results_T[3]
         self.distance_modulus = results_T[4]
-        self.distance = coordinate_tools.distanceModulusToDistance(results_T[4])
+        self.distance = projector.distanceModulusToDistance(results_T[4])
         self.n_obs = results_T[5]
         self.n_obs_half = results_T[6]
         self.n_model = results_T[7]

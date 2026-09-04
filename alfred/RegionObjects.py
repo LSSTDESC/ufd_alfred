@@ -11,11 +11,11 @@ import scipy
 
 from alfred import utils, DataObjects
 
-from astroquery_updated.esa.euclid import Euclid
+from astroquery.esa.euclid import Euclid
 #from astroquery_updated.utils.tap import TapPlus
 from pyvo.dal.tap import TAPService
 from ugali.utils import healpix
-import simple_adl.simple_adl.projector as projector
+import ugali.utils.projector as projector
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 or 10?
 

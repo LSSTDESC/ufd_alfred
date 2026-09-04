@@ -6,7 +6,7 @@ import os
 from astropy.coordinates import SkyCoord
 
 from ugali.utils import healpix
-from astroquery_updated.esa.euclid import Euclid
+from astroquery.esa.euclid import Euclid
 import healsparse as hsp
 import healpy as hp
 from hpgeom import hpgeom
