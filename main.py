@@ -1,13 +1,14 @@
-import sys
 import yaml
 import os
 import gc
 import numpy as np
 from astropy.coordinates import SkyCoord
-from lsst.daf.butler import Butler
+from astropy.table import Table
+import pandas as pd
 from ugali.utils import projector
 from alfred import utils, DataObjects, RegionObjects, merging_catalogs, masks_and_filters, search_tools, plotting_functions, mapmaking
-
+import itertools
+import pdb
 #-----------------------------------
 
 # Note: trying to keep everything generalized as Optical and IR survey as this evolves from DES+Euclid -> Rubin+Roman
@@ -45,6 +46,7 @@ SearchRegion = RegionObjects.Region(nside, coord)
 
 ## Load Rubin Data
 if 'lsst' in opt_survey:
+    from lsst.daf.butler import Butler
     INCOLS = utils.columns_to_query(opt_INCOLS, opt_bands, output_type='list')
     ## Initiate the Butler Instance
     butler = Butler(repo_config, collections=collection)
@@ -65,24 +67,28 @@ if 'euclid' in ir_survey:
 mergedData_raw = merging_catalogs.merge_catalogs(OptData, IRData, SearchRegion,
                                                  preload = True, validation_needed = False)
 print('Merging catalogs completed')
+
+#was having difficulty with masked arrays
+'''
+results = mergedData_raw.data
+print(type(results))
+for col in results.colnames:
+    print(col, type(results[col]))
+'''   
+
 del OptData, IRData #have to think if I'll need these again, can perhaps save them in Region obj
 gc.collect()
 
 ## Clean Up Quality -- this will depend on which surveys are being used
-if 'lsst' in opt_survey:
     # Q: which band snr should I enforce? - right now doing really lax snr > 3 cut
-    snr_mask = masks_and_filters.clean_snr(mergedData_raw.g.mag, mergedData_raw.g.magerr, 3)
-    snr_mask &= masks_and_filters.clean_snr(mergedData_raw.z.mag, mergedData_raw.z.magerr, 3)
-    # this enforces that there are no per band flux flags
-    opt_flag_mask = masks_and_filters.clean_lsst(mergedData_raw.data, 'griz')
-if 'euclid' in ir_survey:
-    snr_mask &= masks_and_filters.clean_snr(mergedData_raw.VIS.mag, mergedData_raw.VIS.magerr, 3)
-    # Q: which euclid flags to enforce?
+snr_mask = masks_and_filters.clean_snr(mergedData_raw.g.mag, mergedData_raw.g.magerr, 3)
+snr_mask &= masks_and_filters.clean_snr(mergedData_raw.z.mag, mergedData_raw.z.magerr, 3)
+snr_mask &= masks_and_filters.clean_snr(mergedData_raw.VIS.mag, mergedData_raw.VIS.magerr, 3)
+    # Q: which flags should I enforce?
     # 0=no flags, 8=source close to a border, 512=source within an extended object area
-    ir_flag_mask = masks_and_filters.clean_euclid(mergedData_raw.data, [0,8,512])
-
-## mix em all together
-total_mask = snr_mask & opt_flag_mask & ir_flag_mask
+flag_mask = mergedData_raw.clean(lsst_bands='griz', euclid_flags=[0,8,512])
+## mix em together
+total_mask = snr_mask & flag_mask
 ## clean up data
 mergedData = mergedData_raw.apply_mask(total_mask)
 SearchRegion.data_dict[opt_survey+'-'+ir_survey] = mergedData
@@ -92,8 +98,11 @@ print('Data cleaned and stored')
 colorcolor_mask = masks_and_filters.niroptical_color_stars(mergedData)
 morphology_mask = masks_and_filters.Zerjal_stars(mergedData)
 morphncolor_mask = colorcolor_mask & morphology_mask
-# no one cared who I was til I put on the mask
-stars = mergedData.apply_mask(morphncolor_mask)
+
+# the masked arrays need to be filled to use simple's cut_isochrone_path
+stars_table = mergedData.data[morphncolor_mask]
+stars_table_filled = utils.handle_ma_arr(stars_table, solution='fill')
+stars = type(mergedData)(stars_table_filled, survey=mergedData.survey, coord_choice=mergedData.coord_choice)
 SearchRegion.data_dict['stellar catalog'] = stars
 SearchRegion.data = stars
 print('Stellar catalog made')
@@ -124,23 +133,73 @@ plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 
 print('S-G plots ran and saved')
 """
 ## hotspot search
-#distance_array=np.arange(50,1000,50) #distance is given in kpc
-distance_array = [400]
+distance_array = np.arange(50,1000,50) #distance is given in kpc
+
+Peaks = []
+
 for distance in distance_array:
+    print(f'Searching at {distance} kpc')
     distance_modulus = projector.distanceToDistanceModulus(distance)
     iso_sel, iso_stars = search_tools.isochrone_search(stars.g, stars.r, 
                                                        distance_modulus, stars,
                                                        age=12.0, Z=0.0002, 
                                                        save_graph=False)
-    results = np.asarray(search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, verbose = False))
-            #survey isn't actually used? so maybe just str?
-            #region is an object, I think I've added all the attributes and methods necessary to use their functions
-    results_transpose = results.T
-    Peaks = []
-    for i in range(len(np.shape(results_transpose))):
-        #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]
-        Peaks.append(DataObjects.Peak(results_transpose[i]))
+    ## need fracdet eventually, but not prioritizing for now
+    
+    results = np.asarray(search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, verbose = False)) #survey isn't actually used in this function it seems? so just putting in a str...?
+    
+    one_peak_per_row = results.T
+    peak_number = np.shape(one_peak_per_row)[0]
+    if peak_number==0:
+        continue
+    for i in range(peak_number):
+        #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]        
+        Peaks.append(DataObjects.Peak(one_peak_per_row[i]))
+        
+if len(Peaks)==0:
+    print('No significant hotspots found.')
+    utils.write_peak_result(Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}')
+        
+# for overlapping peaks, save the one with higher sig
+moresig_Peaks = []
+for Peak1,Peak2 in itertools.combinations(Peaks,2):
+    angsep = projector.angsep(Peak1.ra, Peak1.dec, Peak2.ra, Peak2.dec)
+    if angsep<Peak1.r:
+        two_peaks_sig = np.array([Peak1.sig, Peak2.sig])
+        two_peaks = [Peak1,Peak2]
+        moresig_Peak = two_peaks[np.argmax(two_peaks_sig)]
+        moresig_Peaks.append(moresig_Peak)
+        moresig_Peak.overlapping_peaks.append(two_peaks[np.argmin(two_peaks_sig)])
+#the combination iteration gets duplicates, so drop duplicates (can probably make this logic better...)
+moresig_Peaks = list(set(moresig_Peaks))
+# sort in order of significance
+moresig_Peaks.sort(key=lambda x: x.sig, reverse=True)
+            
+for Peak in moresig_Peaks:
+    print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
+utils.write_peak_result(moresig_Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')
+
+
+    
 '''
+ra_peak_list = []
+dec_peak_list = [] 
+r_peak_list = []
+sig_peak_list = []
+distance_modulus_list = []
+mc_source_id_list = []
+n_obs_peak_list = []
+n_obs_half_peak_list = []
+n_model_peak_list = []
+        ra_peak_list.append(ra_peak)
+        dec_peak_list.append(dec_peak)
+        r_peak_list.append(r_peak)
+        sig_peak_list.append(sig_peak)
+        distance_modulus_list.append(distance_modulus)
+        n_obs_peak_list.append(n_obs_peak)
+        n_obs_half_peak_list.append(n_obs_half_peak)
+        n_model_peak_list.append(n_model_peak)
+        #mc_source_id_list.append(np.tile(0, len(sig_peaks))) <- what is this? I made the logic moot by appending 1 peak at a time rather than per distance
 =
     ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array = np.asarray(results)
     if len(results[3]) == 0:
@@ -149,7 +208,6 @@ for distance in distance_array:
     for i in range(len(results[0])): #this is how long the array is
 '''        
 
-## need fracdet eventually, but not prioritizing for now
 # maybe put these functions as methods of region object
 #full_map = mapmaking.euclid_fullmap('q1.vmpz_healpix_coverage', 'vis', 'coverage', preload=True)
 #masked_map = mapmaking.match_map_polygon(full_map, tract.corners)

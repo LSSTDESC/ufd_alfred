@@ -15,17 +15,19 @@ params = {'legend.fontsize': 'x-large',
           'ytick.labelsize':'x-large'}
 pad=20
 size=1
-
-with open('config.yaml', 'r') as ymlfile:
-# this is a bit hard coded too but idk another work around
-# if main.py stays same folder as the config then this should work
-    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
-    # assuming that it's cool that the whole github repo is considered "home"
-    where = cfg['setup']['where']
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
-    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
-    if not os.path.exists(plots_dir):
-        os.mkdir(plots_dir)
+try:
+    with open('config.yaml', 'r') as ymlfile:
+    # this is a bit hard coded too but idk another work around
+    # if main.py stays same folder as the config then this should work
+        cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+        # assuming that it's cool that the whole github repo is considered "home"
+        where = cfg['setup']['where']
+        home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
+        plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
+        if not os.path.exists(plots_dir):
+            os.mkdir(plots_dir)
+except:
+    print('No config file, this will mess up saving')
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):

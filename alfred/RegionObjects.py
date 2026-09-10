@@ -4,14 +4,13 @@ from astropy.table import Table,vstack
 import healpy as hp
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-import lsst.geom as geom
 import numpy as np
 import gc
 import scipy
 
 from alfred import utils, DataObjects
 
-from astroquery.esa.euclid import Euclid
+from astroquery_updated.esa.euclid import Euclid
 #from astroquery_updated.utils.tap import TapPlus
 from pyvo.dal.tap import TAPService
 from ugali.utils import healpix
@@ -69,8 +68,8 @@ class Region():
         subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
         datapix = healpix.ang2pix(finer_nside, Data.ra, Data.dec)
         mask = np.isin(datapix, subpix)
-        region_data = Data.apply_mask(mask)
-        return region_data
+        regionData = Data.apply_mask(mask)
+        return regionData
 
     def region_borders(self, return_type = 'string', step = 1):
         '''
@@ -104,13 +103,14 @@ class Region():
             return ra_arr, dec_arr
         else:
             print('Type not supported by region_borders function. Please input string, list of tuples, or SkyCoord list')
-            return None
-            
+            return None        
         
     def get_rubin_tracts(self, butler, finer_nside=4096):
         '''
         SkyMap = skyMap object, generated from butler
         '''
+        import lsst.geom as geom
+
         SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
         subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
         tract_ids = []
@@ -148,7 +148,7 @@ class Region():
         print('Rubin query done!')
         return rubinData
 
-    def euclid_query(self, INCOLS, preload = True):
+    def euclid_query(self, INCOLS, preload = True, nside_datashard=32, step=50):
         '''
         checks if the data already exists for that survey and nside/pixel. 
         if it does, we won't query again, if we query, this function saves the new queried data
@@ -159,31 +159,38 @@ class Region():
         if not os.path.exists(data_dir + f'/{ir_survey}'):
             print("no Euclid data folder, making one now")
             os.mkdir(data_dir + f'/{ir_survey}')
-        
-        file_dir = data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet'
+
+        pixel_datashard = healpix.superpixel(self.pixel, self.nside, nside_datashard)
+        file_dir = data_dir + f'/{ir_survey}/{nside_datashard}_{pixel_datashard}_euclid.parquet'
         if not utils.check_if_query(file_dir, preload):
-            print("Check tells me Euclid data exists and you don't want to overwrite. Opening existing file now")
+            print(f'''Check tells me Euclid data exists for nside = {nside_datashard}, pixel = {pixel_datashard}, 
+                      and you don't want to overwrite. Opening existing file now''')
             results_table = Table.read(file_dir)
         else:
-            print("Check tells me Euclid data doesn't exist or you do want to overwrite, querying now")
+            print(f'''Check tells me Euclid data doesn't exist for nside = {nside_datashard}, pixel = {pixel_datashard} 
+                      or you do want to overwrite, querying now''')
     
             query = f'SELECT {INCOLS} FROM mer_catalogue'
             radius = 1.7 #going for bigger than a tract
             #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
             #                            right_ascension, declination) < {radius}'''
-            query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
-                         POLYGON('ICRS', {self.region_borders(return_type='string',step=1)})) = 1'''
+            #query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
+            #             POLYGON('ICRS', {self.region_borders(return_type='string',step=step)})) = 1'''
+            ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=1)
+            query += f''' WHERE ra BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
+                        AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
     
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-            results_table.write(data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet',
-                                   format='parquet', overwrite = True)
+            results_table.write(file_dir, format='parquet', overwrite = True)
+        
         #storing it as the euclid object so we have access to attributes
         results = DataObjects.EuclidData(results_table, ir_survey)
+        results = self.region_cut(results, finer_nside = 4096)
         self.data_dict[ir_survey] = results
         
         return results
 
-    def des_query(self, INCOLS, preload = True):
+    def des_query(self, INCOLS, preload = True, nside_datashard = 32):
         '''
         thinking that this would be really similar to the Euclid function in form
         taking in the columns, using the region borders, returning results/updating attributes
@@ -194,13 +201,16 @@ class Region():
         if not os.path.exists(data_dir + f'/{opt_survey}'):
             print("no DES data folder, making one now")
             os.mkdir(data_dir + f'/{opt_survey}')
-        
-        file_dir = data_dir + f'/{opt_survey}/{self.nside}_{self.pixel}_des.parquet'
+            
+        pixel_datashard = healpix.superpixel(self.pixel, self.nside, nside_datashard)
+        file_dir = data_dir + f'/{opt_survey}/{nside_datashard}_{pixel_datashard}_des.parquet'
         if not utils.check_if_query(file_dir, preload):
-            print("Check tells me DES data exists and you don't want to overwrite. Opening existing file now")
-            desData = DataObjects.DESData(Table.read(file_dir), opt_survey)
+            print(f'''Check tells me DES data exists for nside = {nside_datashard}, pixel = {pixel_datashard}, 
+                      and you don't want to overwrite. Opening existing file now''')
+            resultsData = DataObjects.DESData(Table.read(file_dir), opt_survey)
         else:
-            print("Check tells me DES data doesn't exist or you do want to overwrite, querying now")
+            print(f'''Check tells me DES data doesn't exist for nside = {nside_datashard}, pixel = {pixel_datashard} 
+                      or you do want to overwrite, querying now''')
             
             tap = TAPService("https://datalab.noirlab.edu/tap")
             ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=1)
@@ -209,16 +219,15 @@ class Region():
                         AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
             job = tap.run_async(query)
             results_table = job.to_table()
-
+            results_table.write(file_dir, format='parquet', overwrite = True)
             '''
             #des_dr2.y6_gold?
             from dl import queryClient as qc
             results_table = qc.query(query, fmt = 'table', qtype='adql', verbose=False)
             '''
             resultsData = DataObjects.DESData(results_table, opt_survey)
-            desData = self.region_cut(resultsData)
-            desData.data.write(data_dir + f'/{opt_survey}/{self.nside}_{self.pixel}_des.parquet',
-                                   format='parquet', overwrite = True)
+            
+        desData = self.region_cut(resultsData, finer_nside = 4096)
         #storing it as the des object so we have access to attributes
         self.data_dict[opt_survey] = desData
         

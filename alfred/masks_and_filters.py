@@ -25,6 +25,12 @@ def clean_euclid(data, flags, bands = None, fwhm_limit = 1.5):
     mask &= (data['FWHM'] <= fwhm_limit)
     return mask
 
+def clean_des(data):
+    mask = (data['flags_gold'] == 0)
+    mask &= (data['flags_footprint']==1)
+    #mask &= (data['flags_foreground'])
+    return mask    
+
 def clean_nans(band, band_err):
     mask = (np.isfinite(band))
     mask &= (np.isfinite(band_err))
@@ -33,16 +39,20 @@ def clean_nans(band, band_err):
 
 ## STELLAR MASKS BELOW HERE
 def niroptical_color_stars(MergedData_object):
-    colormask_left = ((MergedData_object.g_mag - MergedData_object.z_mag) <= 0.3)
-    colormask_left &= ((MergedData_object.z_mag - MergedData_object.H_mag) < (-.5 + 1.7*(MergedData_object.g_mag - MergedData_object.z_mag)))
+    colormask_left = ((MergedData_object.g.mag - MergedData_object.z.mag) <= 0.3)
+    colormask_left &= ((MergedData_object.z.mag - MergedData_object.H.mag) < (-.5 + 1.7*(MergedData_object.g.mag - MergedData_object.z.mag)))
     #should I be enforcing a left end cut?
-    colormask_left &= ((MergedData_object.g_mag - MergedData_object.z_mag) > -1)
+    colormask_left &= ((MergedData_object.g.mag - MergedData_object.z.mag) > -1)
    
-    colormask_right = ((MergedData_object.g_mag - MergedData_object.z_mag) >= 0.3)
-    colormask_right &= ((MergedData_object.z_mag - MergedData_object.H_mag) < (-0.1 + 0.25*(MergedData_object.g_mag - MergedData_object.z_mag)))
+    colormask_right = ((MergedData_object.g.mag - MergedData_object.z.mag) >= 0.3)
+    colormask_right &= ((MergedData_object.z.mag - MergedData_object.H.mag) < (-0.1 + 0.25*(MergedData_object.g.mag - MergedData_object.z.mag)))
     #should I be enforcing a right end cut?
-    colormask_right &= ((MergedData_object.g_mag - MergedData_object.z_mag) < 4.5)
-    colormask = colormask_left | colormask_right
+    colormask_right &= ((MergedData_object.g.mag - MergedData_object.z.mag) < 4.5)
+
+    #preserve those with no H detections
+    colormask_Hnans = (np.isnan(MergedData_object.H.mag)) | (MergedData_object.H.mag/MergedData_object.H.magerr < 3)
+    
+    colormask = colormask_left | colormask_right | colormask_Hnans
     return colormask
     
 def Zerjal_stars(MergedData_object):

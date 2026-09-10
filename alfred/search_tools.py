@@ -40,6 +40,15 @@ def isochrone_search(band1, band2, distance_modulus, starData, age=12.0, Z=0.000
     iso_sel = cut_isochrone_path(band1.mag, band2.mag,
                              band1.magerr, band2.magerr,
                              iso, radius = 0.1, mag_max=mag_max)
+
+    '''
+    Note about scipy interpolate used in cut_isochrone_path:
+        Neither of these two approaches (masked arrays and filling missing values with Nans) is directly supported 
+        in scipy.interpolate. Individual routines may offer partial support, and/or workarounds, but in general, 
+        the library firmly adheres to the IEEE 754 semantics where a NaN means not-a-number, 
+        i.e. a result of an illegal mathematical operation (e.g., division by zero), not missing.
+    '''
+    
     iso_starsData = starData.apply_mask(iso_sel)
 
     if save_graph == True:
@@ -94,8 +103,10 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.01, mag_max = 26,
         return cut
 
 def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None, verbose=True):
-    #credit to the authors of simple_adl-- I had to copy/paste to avoid things in their package overriding my config file variables
-    #and I had to adjust one thing to get it working with my Region object: changed the line if (len)
+    #credit to the authors of simple_adl
+        #I had to copy/paste to avoid things in their package overriding my config file variables
+        #and I had to adjust one thing to get it working with my Region object
+            #changed the line -> if (len(region.data.data[iso_sel]))
     """
     Idea: 
     Send a data extension that goes to faint magnitudes, e.g., g < 24.
