@@ -221,7 +221,7 @@ class DESnEuclidData(DESData, EuclidData):
 
         
 
-class Peak(): #TO BUILD
+class Peak():
     def __init__(self, results_T):
         #results_T = ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak
         self.ra = results_T[0]
@@ -235,7 +235,7 @@ class Peak(): #TO BUILD
         self.n_model = results_T[7]
         self.overlapping_peaks = []
         try:
-            self.id = f'{int(self.ra)}.{int(self.dec)}.{int(self.distance)}'
+            self.id = f'{round(self.ra,3)} {round(self.dec,3)} {int(self.distance)}'
         except:
             self.id = np.nan
 

@@ -43,6 +43,8 @@ with open('config.yaml', 'r') as ymlfile:
 ## Define Which Area We're Looking At -- by nside and by coordinate
 coord = (53.16, -28.10) #just using ECDFS center for now
 SearchRegion = RegionObjects.Region(nside, coord)
+corners_ra, corners_dec = SearchRegion.corners
+buffer_ra, buffer_dec = SearchRegion.buffer_region(corners_ra, corners_dec, SearchRegion.coord_center)
 
 ## Load Rubin Data
 if 'lsst' in opt_survey:
@@ -140,6 +142,7 @@ Peaks = []
 for distance in distance_array:
     print(f'Searching at {distance} kpc')
     distance_modulus = projector.distanceToDistanceModulus(distance)
+    ## NOTE: need new des x euclid isochrone
     iso_sel, iso_stars = search_tools.isochrone_search(stars.g, stars.r, 
                                                        distance_modulus, stars,
                                                        age=12.0, Z=0.0002, 
@@ -161,6 +164,7 @@ if len(Peaks)==0:
     utils.write_peak_result(Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}')
         
 # for overlapping peaks, save the one with higher sig
+'''
 moresig_Peaks = []
 for Peak1,Peak2 in itertools.combinations(Peaks,2):
     angsep = projector.angsep(Peak1.ra, Peak1.dec, Peak2.ra, Peak2.dec)
@@ -169,7 +173,26 @@ for Peak1,Peak2 in itertools.combinations(Peaks,2):
         two_peaks = [Peak1,Peak2]
         moresig_Peak = two_peaks[np.argmax(two_peaks_sig)]
         moresig_Peaks.append(moresig_Peak)
+        print('peaks 1 and 2: ', Peak1.id, ' | ', Peak2.id)
+        print('peak being appended: ', moresig_Peak.id)
+        print(' ')
         moresig_Peak.overlapping_peaks.append(two_peaks[np.argmin(two_peaks_sig)])
+'''
+moresig_Peaks = []
+for i in range(len(Peaks)):
+    overlaps = []
+    for j in range(len(Peaks)):
+        if i==j:
+            continue
+        else:
+            angsep = projector.angsep(Peaks[i].ra, Peaks[i].dec, Peaks[j].ra, Peaks[j].dec)
+            if angsep<Peaks[i].r:
+                overlaps.append(Peaks[j])
+    try:
+        mostsig_Peak_i = max(overlaps, key=lambda x: x.sig)
+        moresig_Peaks.append(mostsig_Peak_i)
+    except:
+        moresig_Peaks.append(Peaks[i])
 #the combination iteration gets duplicates, so drop duplicates (can probably make this logic better...)
 moresig_Peaks = list(set(moresig_Peaks))
 # sort in order of significance
@@ -178,7 +201,6 @@ moresig_Peaks.sort(key=lambda x: x.sig, reverse=True)
 for Peak in moresig_Peaks:
     print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
 utils.write_peak_result(moresig_Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')
-
 
     
 '''
