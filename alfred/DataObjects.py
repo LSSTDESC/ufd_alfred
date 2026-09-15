@@ -21,6 +21,12 @@ class Band():
             self.mag = val
             self.magerr = valerr
         self.str = name
+        
+    def apply_mask(self, mask):
+        ## takes in a mask, applies it to the df, then returns another Data object
+        new_mag = self.mag[mask]
+        new_err = self.magerr[mask]
+        return Band(new_mag, new_err, self.str, input_type='mag')
 
 class LSSTData(Data):
     def __init__(self, data, survey='',**kwargs):

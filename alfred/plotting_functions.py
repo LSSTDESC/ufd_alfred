@@ -48,8 +48,10 @@ def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
     plt.close()
 
 #~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
-                   title = '',
+def isochrone_plot(iso, distance_modulus, 
+                   isostars_band1, isostars_band2,
+                   title,
+                   allstars_band1=None, allstars_band2=None,
                    save = True, filename = ''):
     '''
     Plots a g v g-r CMD with isochrone line on top
@@ -58,13 +60,16 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
     ----------
     iso : Isochrone object
     distance_modulus : float, converted from distance using ugali coordinate tools
-    uncut_data : Table or other dataframe type, all the data without an isochrone cut
-    cut_data : Table or other dataframe type, data with isochrone cut applied
-    title : string, title for the plot, the default is just generic tract and survey information
+    isostars_band1, isostars_band2 : Band class of the stars within isochrone cut (e.g. isostars.g)
+    title : string, title for the plot (required)
+    allstars_band1, allstars_band2 : default None, else Band class of the stars NOT within isochrone cut (e.g. allstars.g)
+                                     if they're not None, the data will be plotted as a scatter
+    save : default True, decides whether to save the file or not
+    filename : default '', else will be the title with special characters and spaces removed and letters turned lowercase
 
     Returns
     -------
-    Pretty plot, saves to plots_dir/isochrones/{tract}_{lsst_survey}_{euclid_survey}.png
+    Pretty plot, saves to plots_dir/isochrones/{filename}.png
     '''
 
     fig, ax = plt.subplots(1,1, figsize=(6,6))
@@ -74,24 +79,29 @@ def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
     #ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
     #ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
-    ax.scatter(uncut_data.g_mag - uncut_data.r_mag,
-           uncut_data.g_mag,
-           s=10, c = 'r', alpha =0.3,
-           label = 'Before cut')
-    ax.scatter(cut_data.g_mag - cut_data.r_mag,
-               cut_data.g_mag,
+    
+    if allstars_band1 is not None and allstars_band2 is not None:
+        ax.scatter(allstars_band1.mag - allstars_band2.mag,
+                   allstars_band1.mag, s=10, c = 'r', alpha =0.3, label = 'All stars')
+    elif allstars_band1 is None and allstars_band2 is not None or allstars_band1 is not None and allstars_band2 is None:
+        print('Only one band of uncut data was inputted. Input both bands to plot this data')
+        
+    ax.scatter(isostars_band1.mag - isostars_band2.mag,
+               isostars_band1.mag,
                s=10, c = 'b', alpha =0.5,
-               label = 'After cut')
-    if title == '':
-        title = f'Dist Mod {distance_modulus}, Tract {uncut_data.tract} \n {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data'
-    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = title)
+               label = 'Stars within isochrone template')
+        
+    ax.set(xlabel = f'{isostars_band1.str} - {isostars_band2.str}', ylabel = f'{isostars_band1.str}', xlim = (-1,4), ylim = (28,18), title = title)
     ax.legend()
 
     if save == True:
         if not os.path.exists(plots_dir + f'/isochrones'):
             os.mkdir(plots_dir + f'/isochrones')
         if filename == '':
-            filename = f'{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}'
+            specials = ":,.;&-*()=+/'\n"
+            filename = title.replace(' ', '').replace("'",'').lower()
+            for char in specials:
+                filename = filename.replace(char, '_')
         plt.savefig(plots_dir + f'/isochrones/{filename}.png')
     plt.close()
 

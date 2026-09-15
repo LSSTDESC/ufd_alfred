@@ -143,10 +143,15 @@ for distance in distance_array:
     print(f'Searching at {distance} kpc')
     distance_modulus = projector.distanceToDistanceModulus(distance)
     ## NOTE: need new des x euclid isochrone
+    save = False
+    if distance == 250:
+        save = True
     iso_sel, iso_stars = search_tools.isochrone_search(stars.g, stars.r, 
                                                        distance_modulus, stars,
+                                                       SearchRegion,
                                                        age=12.0, Z=0.0002, 
-                                                       save_graph=False)
+                                                       save_graph=save)
+    save=False
     ## need fracdet eventually, but not prioritizing for now
     
     results = np.asarray(search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, verbose = False)) #survey isn't actually used in this function it seems? so just putting in a str...?

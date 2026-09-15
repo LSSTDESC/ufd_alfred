@@ -23,7 +23,7 @@ with open('config.yaml', 'r') as ymlfile:
         os.mkdir(results_dir)
 
 
-def isochrone_search(band1, band2, distance_modulus, starData, age=12.0, Z=0.0002, mag_max=26, save_graph=True):
+def isochrone_search(band1, band2, distance_modulus, starData, SearchRegion, age=12.0, Z=0.0002, mag_max=26, save_graph=True):
     #the isochrone with Euclid, Roman, and LSST bands is 'mixed'
     iso = isochrone.Isochrone(
                               age=age,
@@ -32,10 +32,6 @@ def isochrone_search(band1, band2, distance_modulus, starData, age=12.0, Z=0.000
                               survey= 'mixed',
                               band_1= band1.str,
                               band_2= band2.str)
-    
-    #cut = cut_isochrone_path(star_data.g_mag, star_data.r_mag,
-    #                         star_data.g_magerr, star_data.r_magerr,
-    #                         iso, radius = 0.1)
     
     iso_sel = cut_isochrone_path(band1.mag, band2.mag,
                              band1.magerr, band2.magerr,
@@ -50,12 +46,18 @@ def isochrone_search(band1, band2, distance_modulus, starData, age=12.0, Z=0.000
     '''
     
     iso_starsData = starData.apply_mask(iso_sel)
+    isostars_band1 = band1.apply_mask(iso_sel)
+    isostars_band2 = band2.apply_mask(iso_sel)
 
     if save_graph == True:
+        title = f'''{starData.survey.replace('_', ' & ')} Stars (nside {SearchRegion.nside} pixel {SearchRegion.pixel}) 
+                    \n Isochrone: {age} Gyr, Z={Z} at Dist Mod = {distance_modulus}'''
         # this plotting function is to be edited/generalized
-        plotting_functions.isochrone_plot(iso, distance_modulus,
-                                          starData, iso_starsData,
-                                          save=True)
+        plotting_functions.isochrone_plot(iso, distance_modulus, 
+                                          isostars_band1, isostars_band2,
+                                          title, 
+                                          allstars_band1=band1, allstars_band2=band2,
+                                          save = True, filename = '')
 
     return iso_sel, iso_starsData
         
