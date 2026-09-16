@@ -228,7 +228,7 @@ class DESnEuclidData(DESData, EuclidData):
         
 
 class Peak():
-    def __init__(self, results_T):
+    def __init__(self, results_T, iso_starsData, iso):
         #results_T = ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak
         self.ra = results_T[0]
         self.dec = results_T[1]
@@ -244,7 +244,31 @@ class Peak():
             self.id = f'{round(self.ra,3)} {round(self.dec,3)} {int(self.distance)}'
         except:
             self.id = np.nan
+        self.member_candidates = iso_starsData
+        self.iso = iso
 
+    def member_candidates(self, iso_starsData=None, scale=1.1):
+        '''
+        scale is to rescale the radius to allow to be more inclusive
+        '''
+        if iso_starsData is None:
+            iso_starsData = self.member_candidates
+        angsep = projector.angsep(iso_starsData.ra, iso_starsData.dec, self.ra, self.dec)
+        radius_mask = (angsep <= self.r*scale)
+        member_candidates = iso_starsData.apply_mask(radius_mask)
+        self.member_candidates = member_candidates
+        return member_candidates
+        
+
+    def diagnostic_plots(self, stars):
+        fig, ax = plt.subplots(2,2,figsize=(20,20))
+        #isochrone plot with just the member_candidates
+        #cutout survey 1
+        #cutout survey 2
+        #scatterplot of the stars, radius, center, etc
+
+    
+#Below methods are to help with formatting things~~~~~~~~~~~~~~~~~~~~~~~
     def make_list(self):
         values_list = [self.id, self.ra, self.dec, 
                        self.r, self.sig, 
@@ -271,6 +295,7 @@ class Peak():
         else:
             print('only tuple or list supported')
         return labels
+        
 
 
         
