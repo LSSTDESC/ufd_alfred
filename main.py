@@ -143,14 +143,11 @@ for distance in distance_array:
     print(f'Searching at {distance} kpc')
     distance_modulus = projector.distanceToDistanceModulus(distance)
     ## NOTE: need new des x euclid isochrone
-    save = False
-    if distance == 250:
-        save = True
     iso_sel, iso_stars, iso = search_tools.isochrone_search(stars.g, stars.r, 
                                                        distance_modulus, stars,
                                                        SearchRegion,
                                                        age=12.0, Z=0.0002, 
-                                                       save_graph=save)
+                                                       save_graph=False)
     save=False
     ## need fracdet eventually, but not prioritizing for now
     
@@ -162,7 +159,7 @@ for distance in distance_array:
         continue
     for i in range(peak_number):
         #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]        
-        Peaks.append(DataObjects.Peak(one_peak_per_row[i], iso_stars, iso))
+        Peaks.append(DataObjects.Peak(one_peak_per_row[i], iso_stars, iso, SearchRegion))
         
 if len(Peaks)==0:
     print('No significant hotspots found.')
