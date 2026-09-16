@@ -270,9 +270,9 @@ class Region():
         
         return desData
 
-# BELOW METHODS ARE COPIED AND MODIFIED FROM SIMPLE_ADL TO MAKE REGION OBJECT MATCH THEIRS
+# BELOW METHODS ARE COPIED AND MODIFIED FROM SIMPLE_ADL TO MAKE REGION OBJECT MATCH THEIRS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # couldn't just directly use it because it's part of a Region object which I'm initializing differently...
-    # and I had to change the self.data.survey.catalog['basis1'] bc I couldn't find where that was pointing
+    # and I had to change the self.data.survey.catalog['basis1'] bc I couldn't find where that was pointing (changed to self.data.basis1[iso_sel])
     def characteristic_density(self, iso_sel, verbose=True):
         """
         Compute the characteristic density of a region
