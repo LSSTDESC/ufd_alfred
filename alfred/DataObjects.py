@@ -228,7 +228,7 @@ class DESnEuclidData(DESData, EuclidData):
         
 
 class Peak():
-    def __init__(self, results_T, iso_starsData, iso):
+    def __init__(self, results_T, iso_starsData, iso, SearchRegion):
         #results_T = ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak
         self.ra = results_T[0]
         self.dec = results_T[1]
@@ -246,6 +246,7 @@ class Peak():
             self.id = np.nan
         self.member_candidates = iso_starsData
         self.iso = iso
+        self.region = SearchRegion
 
     def member_candidates(self, iso_starsData=None, scale=1.1):
         '''
@@ -260,7 +261,7 @@ class Peak():
         return member_candidates
         
 
-    def diagnostic_plots(self, stars):
+    def diagnostic_plots(self, plots_dir):
         fig, ax = plt.subplots(2,2,figsize=(20,20))
         #isochrone plot with just the member_candidates
         #cutout survey 1
