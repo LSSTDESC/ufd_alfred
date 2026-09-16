@@ -59,7 +59,7 @@ def isochrone_search(band1, band2, distance_modulus, starData, SearchRegion, age
                                           allstars_band1=band1, allstars_band2=band2,
                                           save = True, filename = '')
 
-    return iso_sel, iso_starsData
+    return iso_sel, iso_starsData, iso
         
 def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.01, mag_max = 26, return_all=False):
     #Authors: Keith Bechtol, Sid Mau from the "simple" algorithm: https://github.com/DarkEnergySurvey/simple/tree/master
