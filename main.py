@@ -148,7 +148,7 @@ for distance in distance_array:
                                                        SearchRegion,
                                                        age=12.0, Z=0.0002, 
                                                        save_graph=False)
-    save=False
+
     ## need fracdet eventually, but not prioritizing for now
     
     results = np.asarray(search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, verbose = False)) #survey isn't actually used in this function it seems? so just putting in a str...?
