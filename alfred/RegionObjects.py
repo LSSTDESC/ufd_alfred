@@ -11,12 +11,12 @@ import scipy
 from alfred import utils, DataObjects
 
 from astroquery_updated.esa.euclid import Euclid
+#I really need to fix this, maybe github submodules or enforcing a version of astroquery
+#I think it's version 0.4.11 or 10?
 #from astroquery_updated.utils.tap import TapPlus
 from pyvo.dal.tap import TAPService
 from ugali.utils import healpix
 import ugali.utils.projector as projector
-#I really need to fix this, maybe github submodules or enforcing a version of astroquery
-#I think it's version 0.4.11 or 10?
 
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
