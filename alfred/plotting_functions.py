@@ -30,8 +30,10 @@ except:
     print('No config file, this will mess up saving')
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
-    fig, ax = plt.subplots(figsize=(12, 8))
+def map_plot(hsp_map, title, color_lims = (24,26),
+	     save = True, filename = '', ax = None):
+    if ax is None:
+    	fig, ax = plt.subplots(figsize=(12, 8))
     sp = skyproj.MollweideSkyproj(ax=ax)
     sp.draw_hspmap(hsp_map, vmin = color_lims[0], vmax = color_lims[1])
 
@@ -44,15 +46,15 @@ def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
         if filename == '':
             filename = title.lower.replace(' ','').replace('-','_').replace(',','_')
         plt.savefig(plots_dir + f'/maps/{filename}.png')
-
-    plt.close()
+    if ax is None:
+    	plt.close()
 
 #~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def isochrone_plot(iso, distance_modulus, 
                    isostars_band1, isostars_band2,
                    title,
                    allstars_band1=None, allstars_band2=None,
-                   save = True, filename = ''):
+                   save = True, filename = '', ax=None):
     '''
     Plots a g v g-r CMD with isochrone line on top
 
@@ -71,8 +73,8 @@ def isochrone_plot(iso, distance_modulus,
     -------
     Pretty plot, saves to plots_dir/isochrones/{filename}.png
     '''
-
-    fig, ax = plt.subplots(1,1, figsize=(6,6))
+    if ax is None:
+    	fig, ax = plt.subplots(1,1, figsize=(6,6))
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
 
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
@@ -103,7 +105,8 @@ def isochrone_plot(iso, distance_modulus,
             for char in specials:
                 filename = filename.replace(char, '_')
         plt.savefig(plots_dir + f'/isochrones/{filename}.png')
-    plt.close()
+    if ax is None: 	
+	plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band, SearchRegion, PrimaryData, SecondaryData):
