@@ -5,6 +5,7 @@ import seaborn as sns
 from alfred import utils
 import yaml
 import os
+from matplotlib.patches import Circle
 ## ~~~~~~~~~ PLOTS ~~~~~~~~~~~~
 
 params = {'legend.fontsize': 'x-large',
@@ -28,6 +29,24 @@ try:
             os.mkdir(plots_dir)
 except:
     print('No config file, this will mess up saving')
+
+#~~~~~~~~~START CANDIDATE SCATTERPLOT/IMAGE FUNCTIONS~~~~~~~~~~~~~~~~~~~
+def candidate_scatterplot(Peak, ax = None):
+    if ax is None:
+	fig, ax = plt.subplots(figsize=(12, 8))
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec,
+	       marker='o',c='C0',
+	       label='Candidate member stars')
+    ax.scatter(Peak.ra, Peak.dec,
+	       marker='X',c='C1',
+	       label='Peak center and radius')
+    radius = Circle((Peak.ra, Peak.dec),Peak.r,color='C1')
+    ax.add_artist(radius)
+# add title (include distance and significance)
+
+
+
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def map_plot(hsp_map, title, color_lims = (24,26),
@@ -56,7 +75,7 @@ def isochrone_plot(iso, distance_modulus,
                    allstars_band1=None, allstars_band2=None,
                    save = True, filename = '', ax=None):
     '''
-    Plots a g v g-r CMD with isochrone line on top
+    Plots a CMD (any bands) with isochrone line on top
 
     Parameters
     ----------

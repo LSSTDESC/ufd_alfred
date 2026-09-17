@@ -262,12 +262,16 @@ class Peak():
         
 
     def diagnostic_plots(self, plots_dir):
-        fig, ax = plt.subplots(2,2,figsize=(20,20))
-        #isochrone plot with just the member_candidates
-        #cutout survey 1
-        #cutout survey 2
-        #scatterplot of the stars, radius, center, etc
-
+        fig, axes = plt.subplots(2,2,figsize=(20,20))
+	ax = axes.flatten()
+        # isochrone plot with just the member_candidates
+	isochrone_plot(self.iso, self.distance_modulus,
+                       self.member_candidates.g, self.member_candidates.r,
+                       "g vs g-r CMD at distance = {self.distance} kpc",
+                       save = False, ax=ax[0])
+        # cutout survey 1
+        # cutout survey 2
+        # scatterplot of the stars, radius, center, etc
     
 #Below methods are to help with formatting things~~~~~~~~~~~~~~~~~~~~~~~
     def make_list(self):
