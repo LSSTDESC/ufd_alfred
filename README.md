@@ -1,7 +1,24 @@
 # Ultra Faint Dwarf Galaxy Discovery for Dark Matter Constraints
 
 Pipeline tools for finding ultra-faint dwarf galaxies for dark matter analysis using joint LSST and Euclid photometry+morphology.  
-:construction: Most recent code under construction on the searching branch
+
+:construction: under construction
+
+setup with conda:
+- copy a venv with the lsst pipelines
+    - e.g. `conda create --name alfred_venv --clone lsst-scipipe-12.3.0-exact`
+    - `conda activate ufd_alfred`
+    - check butler and geom are there
+        - if not, install lsst pipelines
+        - maybe this works?:
+            - `eups distrib install -t v30_0_10 lsst_distrib`
+            - `setup lsst_distrib`
+        - note: this only seems to work temporarily
+- `python -m pip install git+https://github.com/astropy/astroquery.git`
+- `git clone https://github.com/DarkEnergySurvey/ugali.git && cd ugali`
+    - `python setup.py install`
+- `git clone https://github.com/sidneymau/simple_adl.git`
+    - so far just leaving the clone there 
 
 Run by changing config.yaml to paths suitable for specific system and then run main.py.  
   

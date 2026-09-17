@@ -1,11 +1,11 @@
 from matplotlib import pyplot as plt
 import numpy as np
-import pandas as pd
 import yaml
 import os
+from astropy.coordinates import SkyCoord
 
-from external.ugali.utils import healpix
-from external.astroquery_updated.esa.euclid import Euclid
+from ugali.utils import healpix
+from astroquery_updated.esa.euclid import Euclid
 import healsparse as hsp
 import healpy as hp
 from hpgeom import hpgeom
@@ -24,35 +24,29 @@ with open('config.yaml', 'r') as ymlfile:
     if not os.path.exists(data_dir+'/maps'):
         os.mkdir(data_dir+'/maps')
     
-    survey = cfg['survey']
-    collection = cfg[survey]['collection'][where]
-    skymap = cfg[survey]['skymap']
-    
-    euclid_survey = cfg['euclid_survey']
-
-## WHICH Rubin map do I want??
-
-def rubin_maps(butler, tract, 
-               map_name = 'deepCoadd_psf_maglim_map_weighted_mean', band = 'i', nside=2048, 
-               save_plot=True, map_title = '', fracdet_title = ''):
-    #learning this lives in scratch/healsparse.ipynb -- go back there if needing to change something
-    tract_map =  butler.get(map_name, band = band,
-                            collections = collection, skymap = skymap,
-                            tract = tract,
-                            parameters={"degrade_nside": nside},)
-    fracdet = tract_map.fracdet_map(nside) #coverage_mask ??
-
-    if save_plot == True:
-        if map_title == '':
-            map_title = f'Tract {tract}, {survey} \n {map_name}'
-        if fracdet_title = '':
-            fracdet_title = f'Tract {tract}, {survey} FracDet of \n {map_name}'
-        map_filename = f'{tract}_{survey}_{map_name}'
-        fracdet_filename = f'{tract}_{survey}_FRACDET_{map_name}'
-        plotting_functions.map_plot(tract_map, map_title, save = True, filename = map_filename)
-        plotting_functions.map_plot(fracdet, fracdet_title, save = True, filename = filename)
+    opt_survey = cfg['opt_survey']
+    if 'lsst' in opt_survey:
+        collection = cfg[opt_survey]['collection'][where]
+        skymap = cfg[opt_survey]['skymap']
         
-    return tract_map, fracdet
+
+## which Rubin map do I want??
+
+def rubin_fullmap(butler, region,
+               map_name = 'deepCoadd_psf_maglim_consolidated_map_weighted_mean', band = 'i', nside=2048):
+    '''
+    Learning the healsparse interface and getting map names lives in healsparse-nersc.ipynb
+    This function calls up the full Rubin map then restricts to a region, unless the user inputs None
+    
+    '''
+    full_map =  butler.get(map_name, band = band,
+                            collections = collection, skymap = skymap,
+                            parameters={"degrade_nside": nside},)
+    if region is None:
+        return full_map
+    
+        
+    return full_map
 
 def euclid_map_query(map_name):
     '''
@@ -81,7 +75,7 @@ def euclid_fullmap(map_name, band, simple_name, preload=True):
     preload = True means that I want to use the preloaded / saved data instead of querying again
     '''
     combined_map_path = data_dir + f'/maps/combined_{simple_name}_{band.lower()}_{euclid_survey}.fits'
-    query_check = check_if_query(combined_map_path, preload):
+    query_check = utils.check_if_query(combined_map_path, preload)
     if not query_check:
         print("Check tells me map exists and you don't want to overwrite. Opening map")
         combined_map = hsp.HealSparseMap.read(combined_map_path)
@@ -119,7 +113,7 @@ def euclid_tilemap(tile_id, map_name, band, simple_name, preload=True):
     '''
     
     tile_map_path = data_path + f'/{tile}_{simple_name}_{band}_{euclid_survey}.fits'
-    query_check = check_if_query(tile_map_path,preload):
+    query_check = utils.check_if_query(tile_map_path,preload)
     if not query_check:
         print("Check tells me map exists and you don't want to overwrite. Opening map")
         tile_map = hsp.HealSparseMap.read(tile_map_path)
@@ -147,19 +141,19 @@ def euclid_tilemap(tile_id, map_name, band, simple_name, preload=True):
 
     return tile_map
 
-def match_map_polygon(fullmap,corners,nside=2048):
+def match_map_polygon(fullmap, Region, step=1, nside=2048):
     '''
-    takes in a healsparse map (I'm assuming it's going to be a Euclid map but generalizable) 
-    and restricts it to be just the polygon area defined by corners (which I'm assuming is a Rubin tract)
+    takes in a healsparse map
+    and restricts it to be just the polygon area defined by corners
 
     fullmap : Healsparse map
-    corners : list of SkyCoord objects, should already be in order to create convex polygon
     '''
+    polygon = Region.region_borders(return_type='list of tuples',step=step)
     ras = []
-    decs = []
-    for coord in corners:
-        ras.append(coord.ra.value)
-        decs.append(coord.dec.value)
+    decs =[]
+    for coord in polygon:
+        ras.append(coord[0])
+        decs.append(coord[1])
     
     maskedmap = fullmap[hpgeom.query_polygon(nside, ras, decs, inclusive=True,)]
 
