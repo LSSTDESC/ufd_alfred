@@ -26,6 +26,9 @@ with open('config.yaml', 'r') as ymlfile:
     results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
     if not os.path.exists(results_dir):
         os.mkdir(results_dir)
+    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
+    if not os.path.exists(plots_dir):
+        os.mkdir(plots_dir)
 
     nside = cfg['nside']
 
@@ -67,7 +70,7 @@ if 'euclid' in ir_survey:
 
 ## Merge Catalogs and Clean Up Memory
 mergedData_raw = merging_catalogs.merge_catalogs(OptData, IRData, SearchRegion,
-                                                 preload = True, validation_needed = False)
+                                                 preload = False, validation_needed = True) #can i plot buffer and inner outlines?
 print('Merging catalogs completed')
 
 #was having difficulty with masked arrays
@@ -158,7 +161,7 @@ for distance in distance_array:
     if peak_number==0:
         continue
     for i in range(peak_number):
-        #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]        
+        #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]  
         Peaks.append(DataObjects.Peak(one_peak_per_row[i], iso_stars, iso, SearchRegion))
         
 if len(Peaks)==0:
@@ -180,6 +183,9 @@ for Peak1,Peak2 in itertools.combinations(Peaks,2):
         print(' ')
         moresig_Peak.overlapping_peaks.append(two_peaks[np.argmin(two_peaks_sig)])
 '''
+# sort in order of significance
+Peaks.sort(key=lambda x: x.sig, reverse=True)
+print(Peaks[0].sig)
 moresig_Peaks = []
 for i in range(len(Peaks)):
     overlaps = []
@@ -195,13 +201,13 @@ for i in range(len(Peaks)):
         moresig_Peaks.append(mostsig_Peak_i)
     except:
         moresig_Peaks.append(Peaks[i])
-#the combination iteration gets duplicates, so drop duplicates (can probably make this logic better...)
+#in case of duplicates (probably could make this logic better)
 moresig_Peaks = list(set(moresig_Peaks))
-# sort in order of significance
-moresig_Peaks.sort(key=lambda x: x.sig, reverse=True)
             
 for Peak in moresig_Peaks:
     print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
+    Peak.stars_within_the_radius(scale=1.1)
+    Peak.diagnostic_plots(plots_dir, save=True)  
 utils.write_peak_result(moresig_Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')
 
     

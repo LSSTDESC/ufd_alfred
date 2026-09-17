@@ -5,7 +5,10 @@ import seaborn as sns
 from alfred import utils
 import yaml
 import os
-from matplotlib.patches import Circle
+from matplotlib.patches import Circle, Annulus
+from pyvo.dal import sia
+from astropy.utils.data import download_file
+from astropy.wcs import WCS
 ## ~~~~~~~~~ PLOTS ~~~~~~~~~~~~
 
 params = {'legend.fontsize': 'x-large',
@@ -16,6 +19,7 @@ params = {'legend.fontsize': 'x-large',
           'ytick.labelsize':'x-large'}
 pad=20
 size=1
+
 try:
     with open('config.yaml', 'r') as ymlfile:
     # this is a bit hard coded too but idk another work around
@@ -31,22 +35,127 @@ except:
     print('No config file, this will mess up saving')
 
 #~~~~~~~~~START CANDIDATE SCATTERPLOT/IMAGE FUNCTIONS~~~~~~~~~~~~~~~~~~~
-def candidate_scatterplot(Peak, ax = None):
+width=0.0002
+def candidate_scatterplot(Peak, ax = None, legend=True):
     if ax is None:
-	fig, ax = plt.subplots(figsize=(12, 8))
+        fig, ax = plt.subplots(figsize=(12, 8))
     stars = Peak.member_candidates
     ax.scatter(stars.ra,stars.dec,
-	       marker='o',c='C0',
-	       label='Candidate member stars')
+               s=50, facecolors='none', edgecolors='C0',
+               label='Candidate member stars')
     ax.scatter(Peak.ra, Peak.dec,
-	       marker='X',c='C1',
-	       label='Peak center and radius')
-    radius = Circle((Peak.ra, Peak.dec),Peak.r,color='C1')
+               marker='X',c='C1',
+               label=f'Peak center and radius outline')
+    radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
     ax.add_artist(radius)
-# add title (include distance and significance)
+    ax.set(xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if ax is None:
+    	plt.close()
 
+def three_cutouts()
 
+def euclid_cutout(Peak, ax=None, annotation=True,legend=True):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    #insert cutout code here
+    
+    ##
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec,
+	       s=50, facecolors='none', edgecolors='C0',
+	       label='Candidate member stars')
+    if annotation==True:
+        ax.scatter(Peak.ra, Peak.dec,
+    	       marker='X',c='C1',
+    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
+        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+        ax.add_artist(radius)
+    ax.set(title = "Euclid",
+           xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if ax is None:
+    	plt.close()
 
+def des_cutout(Peak, band, ax=None, annotation=True,legend=True, access_url="https://datalab.noirlab.edu/sia/nsc_dr2", save=False, output_path=None):
+
+    ## insert cutout code here
+    service = sia.SIAService(access_url) # that default access url is to DR2
+    fov = Peak.r*1.5
+    imgTable = service.search((Peak.ra,Peak.dec), (fov/np.cos(Peak.dec*np.pi/180), fov), verbosity=2).to_table()
+    table = imgTable[(imgTable['prodtype'] == 'image') & (imgTable['obs_bandpass']==band) & \
+                    (np.char.find(np.ma.filled(imgTable['object'].astype(str), fill_value='none'),'DES')!=-1)]
+    row = table[np.argmin(table['seeing'])] #does this make sense??
+    url = row['access_url']
+    filename = download_file(url,cache=True,show_progress=False,timeout=120)
+    hdu = fits.open(filename)[0]
+    image = hdu.data
+    hdr = hdu.header
+    wcs = WCS(hdr)
+    # ax being None means that this is a standalone plot
+    if ax is None:
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1, 1, 1, projection=wcs)
+    ax.imshow(image, cmap='gray', vmin=image.min(), vmax=image.min()+(image.max()-image.min())/100.)
+    ##
+    
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec, transform=ax.get_transform('icrs'), s=1000./(stars.i.mag-12), 
+               facecolors='none', edgecolors='C0', linewidths=3,
+               label='Candidate member stars')
+    if annotation==True:
+        ax.scatter(Peak.ra, Peak.dec,
+    	       marker='X',c='C1',
+    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
+        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+        ax.add_artist(radius)
+    ax.set(title = "DES Legacy DR9",
+           xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if save == True:
+        if output_path is None:
+            print('You need to specify path in order to save)
+            plt.close()
+            return
+        plt.savefig(output_path)
+    # ax being None means this is standalone therefore we can close it now
+    if ax is None:
+    	plt.close()
+        
+def lsst_cutout(Peak, ax=None, annotation=True,legend=True):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    #insert cutout code here
+    
+    ##
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec,
+	       s=50, facecolors='none', edgecolors='C0',
+	       label='Candidate member stars')
+    if annotation==True:
+        ax.scatter(Peak.ra, Peak.dec,
+    	       marker='X',c='C1',
+    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
+        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+        ax.add_artist(radius)
+    ax.set(title = "LSST",
+           xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if ax is None:
+    	plt.close()
+    
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def map_plot(hsp_map, title, color_lims = (24,26),
@@ -94,6 +203,7 @@ def isochrone_plot(iso, distance_modulus,
     '''
     if ax is None:
     	fig, ax = plt.subplots(1,1, figsize=(6,6))
+        
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
 
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
@@ -125,7 +235,7 @@ def isochrone_plot(iso, distance_modulus,
                 filename = filename.replace(char, '_')
         plt.savefig(plots_dir + f'/isochrones/{filename}.png')
     if ax is None: 	
-	plt.close()
+    	plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band, SearchRegion, PrimaryData, SecondaryData):

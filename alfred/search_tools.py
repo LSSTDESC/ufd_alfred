@@ -25,11 +25,15 @@ with open('config.yaml', 'r') as ymlfile:
 
 def isochrone_search(band1, band2, distance_modulus, starData, SearchRegion, age=12.0, Z=0.0002, mag_max=26, save_graph=True):
     #the isochrone with Euclid, Roman, and LSST bands is 'mixed'
+    if 'des' in starData.survey.lower():
+        survey='des'
+    else:
+        survey='mixed'
     iso = isochrone.Isochrone(
                               age=age,
                               metallicity=Z,
                               distance_modulus=distance_modulus,
-                              survey= 'mixed',
+                              survey= survey,
                               band_1= band1.str,
                               band_2= band2.str)
     

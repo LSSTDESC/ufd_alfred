@@ -1,7 +1,9 @@
-from alfred import utils, masks_and_filters
+from alfred import utils, masks_and_filters, plotting_functions
 from ugali.utils import projector
 from astropy.table import Table
 from astropy import units as u
+import matplotlib.pyplot as plt
+import os
 
 class Data():
     def __init__(self, data, *args, **kwargs):
@@ -241,14 +243,14 @@ class Peak():
         self.n_model = results_T[7]
         self.overlapping_peaks = []
         try:
-            self.id = f'{round(self.ra,3)} {round(self.dec,3)} {int(self.distance)}'
+            self.id = f'{round(self.ra,5)}_{round(self.dec,5)}_{int(self.distance)}'
         except:
             self.id = np.nan
         self.member_candidates = iso_starsData
         self.iso = iso
         self.region = SearchRegion
 
-    def member_candidates(self, iso_starsData=None, scale=1.1):
+    def stars_within_the_radius(self, iso_starsData=None, scale=1.1):
         '''
         scale is to rescale the radius to allow to be more inclusive
         '''
@@ -260,18 +262,49 @@ class Peak():
         self.member_candidates = member_candidates
         return member_candidates
         
-
-    def diagnostic_plots(self, plots_dir):
-        fig, axes = plt.subplots(2,2,figsize=(20,20))
-	ax = axes.flatten()
+    def diagnostic_plots(self, plots_dir, save=True):
+        
+        fig, axes = plt.subplots(2,2,figsize=(20,15))
+        ax = axes.flatten()
         # isochrone plot with just the member_candidates
-	isochrone_plot(self.iso, self.distance_modulus,
-                       self.member_candidates.g, self.member_candidates.r,
-                       "g vs g-r CMD at distance = {self.distance} kpc",
-                       save = False, ax=ax[0])
-        # cutout survey 1
-        # cutout survey 2
+        
+        plotting_functions.isochrone_plot(self.iso, self.distance_modulus,
+                                            self.member_candidates.g, self.member_candidates.r,
+                                            "",
+                                            save = False, ax = ax[0])
         # scatterplot of the stars, radius, center, etc
+        plotting_functions.candidate_scatterplot(self, ax = ax[1],legend=True)
+        cutout_names = self.member_candidates.survey.lower()
+        survey_count = 0
+        if 'euclid' in cutout_names:
+            plotting_functions.euclid_cutout(self, ax=ax[2],legend=False)
+            survey_count+=1
+        if 'des' in cutout_names:
+            if survey_count == 1:
+                #this means we've already plotted euclid
+                desax = ax[3]
+            else:
+                desax = ax[2]
+            plotting_functions.des_cutout(self, ax=desax,legend=False)
+            survey_count+=1
+        if 'lsst' in cutout_names:
+            if survey_count==0:
+                #this means we haven't plotted any cutouts yet
+                lsstax = ax[2]
+            elif survey_count==1:
+                #this means we've already plotted euclid or des cutouts
+                lsstax = ax[3]
+            plotting_functions.lsst_cutout(self, ax=lsstax,legend=False)
+
+        plt.suptitle(f"Peak at {round(self.ra,2)},{round(self.dec,2)} deg, r = {round(self.r,2)} deg, d = {int(self.distance)} kpc, {self.sig} sigma")
+        plt.tight_layout()
+        if save == True:
+            pixel_plots_dir = plots_dir + f'/nside{self.region.nside}_pixel{self.region.pixel}'
+            if not os.path.exists(pixel_plots_dir):
+                os.mkdir(pixel_plots_dir)
+            plt.savefig(pixel_plots_dir + f'/{self.id}_diagnostic_plots.png')
+        plt.close()
+
     
 #Below methods are to help with formatting things~~~~~~~~~~~~~~~~~~~~~~~
     def make_list(self):
