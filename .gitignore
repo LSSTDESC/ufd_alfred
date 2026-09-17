@@ -1,7 +1,12 @@
 .ipynb_checkpoints/
 __pycache__/
-external/
+external_data/
+ugali/
+astroquery_updated/
+simple_adl/
+simple/
 usdf_pipeline_tests.ipynb
 nersc_pipeline_tests.ipynb
 euclid_data/
+
 #plots/
