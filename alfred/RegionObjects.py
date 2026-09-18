@@ -4,7 +4,6 @@ from astropy.table import Table,vstack
 import healpy as hp
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-import lsst.geom as geom
 import numpy as np
 import gc
 import scipy
@@ -12,12 +11,12 @@ import scipy
 from alfred import utils, DataObjects
 
 from astroquery_updated.esa.euclid import Euclid
+#I really need to fix this, maybe github submodules or enforcing a version of astroquery
+#I think it's version 0.4.11 or 10?
 #from astroquery_updated.utils.tap import TapPlus
 from pyvo.dal.tap import TAPService
 from ugali.utils import healpix
-import simple_adl.simple_adl.projector as projector
-#I really need to fix this, maybe github submodules or enforcing a version of astroquery
-#I think it's version 0.4.11 or 10?
+import ugali.utils.projector as projector
 
 with open('config.yaml', 'r') as ymlfile:
     cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
@@ -38,22 +37,22 @@ class Region():
         self.nside = nside
         if type(location)==int:
             pixel = location
-            ra,dec = healpix.pix2ang(nside, pixel)
         elif type(location)==tuple:
-            ra,dec = location
-            pixel = healpix.ang2pix(nside, ra, dec)
+            ra_og,dec_og = location
+            pixel = healpix.ang2pix(nside, ra_og, dec_og)
+        ra_center,dec_center = healpix.pix2ang(nside, pixel)
         self.pixel = pixel
         self.pix_center = pixel
-        self.ra = ra
-        self.dec = dec
-        phi = healpix.lon2phi(ra)
-        theta = healpix.lat2theta(dec)
-        self.pixel_neighbors = hp.pixelfunc.get_all_neighbours(nside, theta, phi=phi)
+        self.coord_center = (ra_center, dec_center)
+        phi = healpix.lon2phi(ra_center)
+        theta = healpix.lat2theta(dec_center)
+        self.pixel_neighbors = hp.pixelfunc.get_all_neighbours(nside, theta, phi=phi) 
+                #returns 8 nearest pixel indices - not sure if it's necessary/helpful
         self.fracdet = None
-        self.proj = projector.Projector(self.ra, self.dec)
-            #returns 8 nearest pixel indices 
-        #self.borders = hp.vec2ang(hp.boundaries(nside, pixel, step=1, nest=False).T, lonlat=True)
-        #self.borders_str = 
+        self.proj = projector.Projector(ra_center,dec_center)
+        self.corners = hp.vec2ang(hp.boundaries(nside, pixel, step=1, nest=False).T, lonlat=True)
+                #corners is of the format (ra_arr, dec_arr)
+        self.buffer_corners = None
 
         #getting these overlapping regions for data querying purposes
         self.rubin_tracts = -1
@@ -62,17 +61,37 @@ class Region():
 
         self.data_dict = {}
 
-    def region_cut(self, Data, finer_nside = 4096):
+    def region_cut(self, Data, buffer=True, finer_nside = 4096):
         '''
         input a Data Object that has an ra and dec attribute, needs to be in degrees, and apply_mask method
         '''
-        subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
+        if buffer==True:
+            try:
+                #get pixels in buffer region
+                vec_arr = healpix.ang2vec(self.buffer_corners[0], self.buffer_corners[1])
+                ra_postvec, dec_postvec = hp.vec2ang(vec_arr)
+                subpix = hp.query_polygon(finer_nside,vec_arr,inclusive=True)
+            except ValueError:
+                print("Buffer region probably not run yet, so it's still set to None")
+        else:
+            subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
         datapix = healpix.ang2pix(finer_nside, Data.ra, Data.dec)
         mask = np.isin(datapix, subpix)
-        region_data = Data.apply_mask(mask)
-        return region_data
+        regionData = Data.apply_mask(mask)
+        return regionData
 
-    def region_borders(self, return_type = 'string', step = 1):
+    def buffer_region(self, ra_corners, dec_corners, center, scale=1.1):
+        '''
+        sets the buffer_corners attribute to be the corners of the wider borders, formatted as ra_arr,dec_arr
+        also returns the ra and dec arrays
+        '''
+        ra_recentered, dec_recentered = ra_corners-center[0], dec_corners-center[1]
+        ra_rescaled, dec_rescaled = scale*ra_recentered, scale*dec_recentered
+        ra_new, dec_new = ra_rescaled+center[0], dec_rescaled+center[1]
+        self.buffer_corners = ra_new, dec_new
+        return ra_new, dec_new
+
+    def region_borders(self, return_type = 'string', step = 1, buffer = True):
         '''
         Supported types to return are 
         1. "string" - returns a string of format "ra1,dec1,ra2,dec2..."
@@ -83,7 +102,13 @@ class Region():
 
         all ra and dec are in degrees (hopefully)
         '''
-        ra_arr, dec_arr = hp.vec2ang(hp.boundaries(self.nside, self.pixel, step=step, nest=False).T, lonlat=True)
+        if buffer==True:
+            try:
+                ra_arr, dec_arr = self.buffer_corners
+            except ValueError:
+                print("Buffer region probably not run yet, so it's still set to None")
+        else:
+            ra_arr, dec_arr = self.corners
         if return_type == 'string':
             border_str = ''
             for ra, dec in zip(ra_arr, dec_arr):
@@ -104,15 +129,24 @@ class Region():
             return ra_arr, dec_arr
         else:
             print('Type not supported by region_borders function. Please input string, list of tuples, or SkyCoord list')
-            return None
-            
+            return None        
         
-    def get_rubin_tracts(self, butler, finer_nside=4096):
+    def get_rubin_tracts(self, butler, finer_nside=4096, buffer=True):
         '''
         SkyMap = skyMap object, generated from butler
         '''
+        import lsst.geom as geom
+
         SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
-        subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
+        if buffer==True:
+            try:
+                vec_arr = healpix.ang2vec(self.buffer_corners[0], self.buffer_corners[1])
+                ra_postvec, dec_postvec = hp.vec2ang(vec_arr)
+                subpix = hp.query_polygon(finer_nside,vec_arr,inclusive=True)
+            except ValueError:
+                print("Buffer region probably not run yet, so it's still set to None")
+        else:
+            subpix = healpix.subpixel(self.pixel, self.nside, finer_nside)
         tract_ids = []
         for pix in subpix:
             ra, dec = healpix.pix2ang(finer_nside, pix)
@@ -124,14 +158,17 @@ class Region():
 
         return tract_ids
 
-    def rubin_query(self, butler, tract_arr, INCOLS):
+    def rubin_query(self, butler, INCOLS, tract_arr=None, buffer=True):
         '''
         I don't have a preload because I figured that we'd just be using the butler and not saving
         
         queries by tract but for a whole array of tracts, then restricts based on a healpix mask 
         of what is actually in that region
         '''
+        if tract_arr is None:
+            tract_arr = self.get_rubin_tracts(butler, finer_nside=4096, buffer=buffer)
         print('Querying Rubin tracts ', tract_arr)
+        
         rubin_data_list = [] #these are a bunch of LSSTData objects -- need to think how to concatenate
         for tract in tract_arr:
             full_tract = butler.get('object', 
@@ -148,7 +185,7 @@ class Region():
         print('Rubin query done!')
         return rubinData
 
-    def euclid_query(self, INCOLS, preload = True):
+    def euclid_query(self, INCOLS, preload = True, nside_datashard=32, step=1, buffer=True):
         '''
         checks if the data already exists for that survey and nside/pixel. 
         if it does, we won't query again, if we query, this function saves the new queried data
@@ -159,31 +196,38 @@ class Region():
         if not os.path.exists(data_dir + f'/{ir_survey}'):
             print("no Euclid data folder, making one now")
             os.mkdir(data_dir + f'/{ir_survey}')
-        
-        file_dir = data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet'
+
+        pixel_datashard = healpix.superpixel(self.pixel, self.nside, nside_datashard)
+        file_dir = data_dir + f'/{ir_survey}/{nside_datashard}_{pixel_datashard}_euclid.parquet'
         if not utils.check_if_query(file_dir, preload):
-            print("Check tells me Euclid data exists and you don't want to overwrite. Opening existing file now")
+            print(f'''Check tells me Euclid data exists for nside = {nside_datashard}, pixel = {pixel_datashard}, 
+                      and you don't want to overwrite. Opening existing file now''')
             results_table = Table.read(file_dir)
         else:
-            print("Check tells me Euclid data doesn't exist or you do want to overwrite, querying now")
+            print(f'''Check tells me Euclid data doesn't exist for nside = {nside_datashard}, pixel = {pixel_datashard} 
+                      or you do want to overwrite, querying now''')
     
             query = f'SELECT {INCOLS} FROM mer_catalogue'
             radius = 1.7 #going for bigger than a tract
             #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
             #                            right_ascension, declination) < {radius}'''
-            query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
-                         POLYGON('ICRS', {self.region_borders(return_type='string',step=1)})) = 1'''
+            #query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
+            #             POLYGON('ICRS', {self.region_borders(return_type='string',step=step)})) = 1'''
+            ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=step,buffer=buffer)
+            query += f''' WHERE ra BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
+                        AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
     
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
-            results_table.write(data_dir + f'/{ir_survey}/{self.nside}_{self.pixel}_euclid.parquet',
-                                   format='parquet', overwrite = True)
+            results_table.write(file_dir, format='parquet', overwrite = True)
+        
         #storing it as the euclid object so we have access to attributes
         results = DataObjects.EuclidData(results_table, ir_survey)
+        results = self.region_cut(results, finer_nside = 4096,buffer=buffer)
         self.data_dict[ir_survey] = results
         
         return results
 
-    def des_query(self, INCOLS, preload = True):
+    def des_query(self, INCOLS, preload = True, nside_datashard = 32, step=1, buffer=True):
         '''
         thinking that this would be really similar to the Euclid function in form
         taking in the columns, using the region borders, returning results/updating attributes
@@ -194,39 +238,41 @@ class Region():
         if not os.path.exists(data_dir + f'/{opt_survey}'):
             print("no DES data folder, making one now")
             os.mkdir(data_dir + f'/{opt_survey}')
-        
-        file_dir = data_dir + f'/{opt_survey}/{self.nside}_{self.pixel}_des.parquet'
+            
+        pixel_datashard = healpix.superpixel(self.pixel, self.nside, nside_datashard)
+        file_dir = data_dir + f'/{opt_survey}/{nside_datashard}_{pixel_datashard}_des.parquet'
         if not utils.check_if_query(file_dir, preload):
-            print("Check tells me DES data exists and you don't want to overwrite. Opening existing file now")
-            desData = DataObjects.DESData(Table.read(file_dir), opt_survey)
+            print(f'''Check tells me DES data exists for nside = {nside_datashard}, pixel = {pixel_datashard}, 
+                      and you don't want to overwrite. Opening existing file now''')
+            resultsData = DataObjects.DESData(Table.read(file_dir), opt_survey)
         else:
-            print("Check tells me DES data doesn't exist or you do want to overwrite, querying now")
+            print(f'''Check tells me DES data doesn't exist for nside = {nside_datashard}, pixel = {pixel_datashard} 
+                      or you do want to overwrite, querying now''')
             
             tap = TAPService("https://datalab.noirlab.edu/tap")
-            ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=1)
+            ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=step, buffer=buffer)
             query = f'''SELECT {INCOLS} FROM des_dr2.y6_gold
                         WHERE ra BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
                         AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
             job = tap.run_async(query)
             results_table = job.to_table()
-
+            results_table.write(file_dir, format='parquet', overwrite = True)
             '''
             #des_dr2.y6_gold?
             from dl import queryClient as qc
             results_table = qc.query(query, fmt = 'table', qtype='adql', verbose=False)
             '''
             resultsData = DataObjects.DESData(results_table, opt_survey)
-            desData = self.region_cut(resultsData)
-            desData.data.write(data_dir + f'/{opt_survey}/{self.nside}_{self.pixel}_des.parquet',
-                                   format='parquet', overwrite = True)
+            
+        desData = self.region_cut(resultsData, finer_nside = 4096, buffer=buffer)
         #storing it as the des object so we have access to attributes
         self.data_dict[opt_survey] = desData
         
         return desData
 
-# BELOW METHODS ARE COPIED AND MODIFIED FROM SIMPLE_ADL TO MAKE REGION OBJECT MATCH THEIRS
+# BELOW METHODS ARE COPIED AND MODIFIED FROM SIMPLE_ADL TO MAKE REGION OBJECT MATCH THEIRS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
     # couldn't just directly use it because it's part of a Region object which I'm initializing differently...
-    # and I had to change the self.data.survey.catalog['basis1'] bc I couldn't find where that was pointing
+    # and I had to change the self.data.survey.catalog['basis1'] bc I couldn't find where that was pointing (changed to self.data.basis1[iso_sel])
     def characteristic_density(self, iso_sel, verbose=True):
         """
         Compute the characteristic density of a region

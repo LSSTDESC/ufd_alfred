@@ -1,5 +1,9 @@
-from alfred import utils
-from simple_adl.simple_adl import coordinate_tools
+from alfred import utils, masks_and_filters, plotting_functions
+from ugali.utils import projector
+from astropy.table import Table
+from astropy import units as u
+import matplotlib.pyplot as plt
+import os
 
 class Data():
     def __init__(self, data, *args, **kwargs):
@@ -19,12 +23,18 @@ class Band():
             self.mag = val
             self.magerr = valerr
         self.str = name
+        
+    def apply_mask(self, mask):
+        ## takes in a mask, applies it to the df, then returns another Data object
+        new_mag = self.mag[mask]
+        new_err = self.magerr[mask]
+        return Band(new_mag, new_err, self.str, input_type='mag')
 
 class LSSTData(Data):
-    def __init__(self, data, lsst_survey='',**kwargs):
-        super().__init__(data,**kwargs)
-        self.release = lsst_survey
-        self.survey = lsst_survey
+    def __init__(self, data, survey='',**kwargs):
+        super().__init__(data, **kwargs)
+        self.release = survey
+        self.survey = survey
         #self.tract = tract
         #self.field = utils.get_field(tract)
 
@@ -66,11 +76,14 @@ class LSSTData(Data):
         new_data = self.data[mask]
         return LSSTData(new_data, self.survey)
 
+    def clean(self, bands):
+        return masks_and_filters.clean_lsst(self.data, bands)        
+
 class EuclidData(Data):
-    def __init__(self, data, euclid_survey='',**kwargs):
+    def __init__(self, data, survey='', **kwargs):
         super().__init__(data, **kwargs)
-        self.release = euclid_survey
-        self.survey = euclid_survey #I realized release might be more confusing than survey? 
+        self.release = survey
+        self.survey = survey #I realized release might be more confusing than survey? 
                                     #will try to fix where I use .release attribute
 
         ## coordinates
@@ -112,13 +125,17 @@ class EuclidData(Data):
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return EuclidData(new_data, self.release)
+        return EuclidData(new_data, self.survey)
+
+    def clean(self, flags, bands = None, fwhm_limit = 1.5):
+        return masks_and_filters.clean_euclid(self.data, flags, bands = None, fwhm_limit = 1.5)
+        
 
 class DESData(Data):
-    def __init__(self, data, des_survey='',**kwargs):
+    def __init__(self, data, survey='',**kwargs):
         super(DESData, self).__init__(data,**kwargs)
-        self.release = des_survey
-        self.survey = des_survey
+        self.release = survey
+        self.survey = survey
         
         ## coordinates
         self.ra_limits = (data['alphawin_j2000'].min(), data['alphawin_j2000'].max())
@@ -149,11 +166,14 @@ class DESData(Data):
         new_data = self.data[mask]
         return DESData(new_data, self.survey)
 
+    def clean(self):
+        return masks_and_filters.clean_des(self.data)
+
 
 class LSSTnEuclidData(LSSTData, EuclidData):
-    def __init__(self, merged_data, lsst_survey='', euclid_survey='', coord_choice='LSST', **kwargs):
-        LSSTData.__init__(self, data=merged_data, lsst_survey=lsst_survey, euclid_survey=euclid_survey, **kwargs)
-        EuclidData.__init__(self, data=merged_data, euclid_survey=euclid_survey)
+    def __init__(self, merged_data, survey='', coord_choice='LSST', **kwargs):
+        LSSTData.__init__(self, data=merged_data, survey=survey, **kwargs)
+        EuclidData.__init__(self, data=merged_data, survey=survey, **kwargs)
 
         if coord_choice=='LSST':
             self.ra = merged_data['coord_ra']
@@ -162,22 +182,27 @@ class LSSTnEuclidData(LSSTData, EuclidData):
             self.ra = merged_data['RIGHT_ASCENSION']
             self.dec = merged_data['DECLINATION']
         self.coord_choice = coord_choice
-        self.release = f'{lsst_survey}_{euclid_survey}'
-        self.survey = f'{lsst_survey}_{euclid_survey}'
-        self.lsst_release = lsst_survey
-        self.euclid_release = euclid_survey
-        self.lsst_survey = lsst_survey
-        self.euclid_survey = euclid_survey
+        self.release = survey
+        self.survey = survey
 
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return LSSTnEuclidData(new_data, self.lsst_survey, self.euclid_survey, coord_choice=self.coord_choice)
+        return LSSTnEuclidData(new_data, self.survey, coord_choice=self.coord_choice)
+
+    def clean(self, lsst_bands, euclid_flags, euclid_bands=None, fwhm_limit=1.5, **kwargs):
+        '''
+        kwargs = lsst_bands, euclid_flags, euclid_bands, fwhm_limit
+        '''
+        mask = masks_and_filters.clean_lsst(self.data,bands=lsst_bands)
+        mask &= masks_and_filters.clean_euclid(self.data,flags=euclid_flags,bands=euclid_bands,fwhm_limit=fwhm_limit)
+        return mask
+
 
 class DESnEuclidData(DESData, EuclidData):
-    def __init__(self, merged_data, des_survey='', euclid_survey='', coord_choice='DES',**kwargs):
-        DESData.__init__(self, data=merged_data, des_survey=des_survey, euclid_survey=euclid_survey,**kwargs)
-        EuclidData.__init__(self, merged_data, euclid_survey)
+    def __init__(self, merged_data, survey='', coord_choice='DES',**kwargs):
+        DESData.__init__(self, data=merged_data, survey=survey,**kwargs)
+        EuclidData.__init__(self, merged_data, survey=survey)
 
         if coord_choice=='DES':
             self.ra = merged_data['alphawin_j2000']
@@ -186,30 +211,130 @@ class DESnEuclidData(DESData, EuclidData):
             self.ra = merged_data['RIGHT_ASCENSION']
             self.dec = merged_data['DECLINATION']
         self.coord_choice = coord_choice
-        self.release = f'{des_survey}_{euclid_survey}'
-        self.survey = f'{des_survey}_{euclid_survey}'
-        self.des_release = des_survey
-        self.euclid_release = euclid_survey
-        self.des_survey = des_survey
-        self.euclid_survey = euclid_survey
-
+        self.release = survey
+        self.survey = survey
+  
     def apply_mask(self, mask):
         ## takes in a mask, applies it to the df, then returns another Data object
         new_data = self.data[mask]
-        return DESnEuclidData(new_data, self.des_survey, self.euclid_survey, coord_choice=self.coord_choice)
+        return DESnEuclidData(new_data, survey=self.survey, coord_choice=self.coord_choice)
 
-class Peak(): #TO BUILD
-    def __init__(self, results_T):
+    def clean(self, des_bands=None, euclid_flags=None, euclid_bands=None, fwhm_limit=1.5, **kwargs):
+        '''
+        kwargs = euclid_flags, euclid_bands, fwhm_limit
+        '''
+        mask = masks_and_filters.clean_des(self.data)
+        mask &= masks_and_filters.clean_euclid(self.data,flags=euclid_flags,bands=euclid_bands,fwhm_limit=fwhm_limit)
+        return mask
+
+        
+
+class Peak():
+    def __init__(self, results_T, iso_starsData, iso, SearchRegion):
         #results_T = ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak
         self.ra = results_T[0]
         self.dec = results_T[1]
         self.r = results_T[2]
         self.sig = results_T[3]
         self.distance_modulus = results_T[4]
-        self.distance = coordinate_tools.distanceModulusToDistance(results_T[4])
+        self.distance = projector.distanceModulusToDistance(results_T[4])
         self.n_obs = results_T[5]
         self.n_obs_half = results_T[6]
         self.n_model = results_T[7]
+        self.overlapping_peaks = []
+        try:
+            self.id = f'{round(self.ra,5)}_{round(self.dec,5)}_{int(self.distance)}'
+        except:
+            self.id = np.nan
+        self.member_candidates = iso_starsData
+        self.iso = iso
+        self.region = SearchRegion
+
+    def stars_within_the_radius(self, iso_starsData=None, scale=1.1):
+        '''
+        scale is to rescale the radius to allow to be more inclusive
+        '''
+        if iso_starsData is None:
+            iso_starsData = self.member_candidates
+        angsep = projector.angsep(iso_starsData.ra, iso_starsData.dec, self.ra, self.dec)
+        radius_mask = (angsep <= self.r*scale)
+        member_candidates = iso_starsData.apply_mask(radius_mask)
+        self.member_candidates = member_candidates
+        return member_candidates
+        
+    def diagnostic_plots(self, plots_dir, save=True):
+        
+        fig, axes = plt.subplots(2,2,figsize=(20,15))
+        ax = axes.flatten()
+        # isochrone plot with just the member_candidates
+        
+        plotting_functions.isochrone_plot(self.iso, self.distance_modulus,
+                                            self.member_candidates.g, self.member_candidates.r,
+                                            "",
+                                            save = False, ax = ax[0])
+        # scatterplot of the stars, radius, center, etc
+        plotting_functions.candidate_scatterplot(self, ax = ax[1],legend=True)
+        cutout_names = self.member_candidates.survey.lower()
+        survey_count = 0
+        if 'euclid' in cutout_names:
+            plotting_functions.euclid_cutout(self, ax=ax[2],legend=False)
+            survey_count+=1
+        if 'des' in cutout_names:
+            if survey_count == 1:
+                #this means we've already plotted euclid
+                desax = ax[3]
+            else:
+                desax = ax[2]
+            plotting_functions.des_cutout(self, ax=desax,legend=False)
+            survey_count+=1
+        if 'lsst' in cutout_names:
+            if survey_count==0:
+                #this means we haven't plotted any cutouts yet
+                lsstax = ax[2]
+            elif survey_count==1:
+                #this means we've already plotted euclid or des cutouts
+                lsstax = ax[3]
+            plotting_functions.lsst_cutout(self, ax=lsstax,legend=False)
+
+        plt.suptitle(f"Peak at {round(self.ra,2)},{round(self.dec,2)} deg, r = {round(self.r,2)} deg, d = {int(self.distance)} kpc, {self.sig} sigma")
+        plt.tight_layout()
+        if save == True:
+            pixel_plots_dir = plots_dir + f'/nside{self.region.nside}_pixel{self.region.pixel}'
+            if not os.path.exists(pixel_plots_dir):
+                os.mkdir(pixel_plots_dir)
+            plt.savefig(pixel_plots_dir + f'/{self.id}_diagnostic_plots.png')
+        plt.close()
+
+    
+#Below methods are to help with formatting things~~~~~~~~~~~~~~~~~~~~~~~
+    def make_list(self):
+        values_list = [self.id, self.ra, self.dec, 
+                       self.r, self.sig, 
+                       self.distance, self.distance_modulus, 
+                       self.n_obs, self.n_obs_half, self.n_model]
+        return values_list
+
+    def make_tuple(self):
+        return self.id, self.ra, self.dec, self.r, self.sig, self.distance, self.distance_modulus, self.n_obs, self.n_obs_half, self.n_model
+        
+    def list_labels(self, return_type = 'tuple'):
+        if return_type == 'tuple':
+            labels = ('peak id', 'ra','dec','r','sig','distance','distance modulus', 'n obs', 'n obs half', 'n model')
+        elif return_type == 'list':
+            labels = ['peak id','ra','dec','r','sig','distance','distance modulus', 'n obs', 'n obs half', 'n model']
+        elif return_type == 'tuple units':
+            labels = ('peak id','ra [deg]','dec [deg]','r [deg]','sig','distance [kpc]','distance modulus [mag]', 'n obs', 'n obs half', 'n model')
+        elif return_type == 'list units':
+            labels = ['peak id','ra [deg]','dec [deg]','r [deg]','sig','distance [kpc]','distance modulus [mag]', 'n obs', 'n obs half', 'n model']
+        elif return_type == 'tuple units dtype':
+            labels = (('peak id',str),('ra [deg]','f8'),('dec [deg]','f8'),('r [deg]','f8'),('sig','f8'),('distance [kpc]','f8'),('distance modulus [mag]','f8'), ('n obs','f8'), ('n obs half','f8'), ('n model','f8'))
+        elif return_type == 'list units dtype':
+            labels = [('peak id',str),('ra [deg]','f8'),('dec [deg]','f8'),('r [deg]','f8'),('sig','f8'),('distance [kpc]','f8'),('distance modulus [mag]','f8'), ('n obs','f8'), ('n obs half','f8'), ('n model','f8')]
+        else:
+            print('only tuple or list supported')
+        return labels
+        
+
 
         
 '''

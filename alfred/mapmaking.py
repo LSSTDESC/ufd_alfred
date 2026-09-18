@@ -1,6 +1,5 @@
 from matplotlib import pyplot as plt
 import numpy as np
-import pandas as pd
 import yaml
 import os
 from astropy.coordinates import SkyCoord

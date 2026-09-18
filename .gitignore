@@ -1,21 +1,20 @@
 .ipynb_checkpoints/
-simple/
-ugali/
-euclid_data/
+__pycache__/
+
+#virtual environments
 alfred_venv
-__pycache__/
-usdf_pipeline_tests.ipynb
-nersc_pipeline_tests.ipynb
-euclid_data/
-simple_adl/
+
+#external packages
 simple/
 ugali/
-astroquery_updated/.ipynb_checkpoints/
-__pycache__/
+simple_adl/
+astroquery_updated/
+
+#all the data
+external_data/
+euclid_data/
+
+#files that just might not transfer well
 usdf_pipeline_tests.ipynb
 nersc_pipeline_tests.ipynb
-euclid_data/
-simple_adl/
-ugali/
-astroquery_updated/
 #plots/

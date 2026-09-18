@@ -1,11 +1,14 @@
 import numpy as np
-import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
 import seaborn as sns
 from alfred import utils
 import yaml
 import os
+from matplotlib.patches import Circle, Annulus
+from pyvo.dal import sia
+from astropy.utils.data import download_file
+from astropy.wcs import WCS
 ## ~~~~~~~~~ PLOTS ~~~~~~~~~~~~
 
 params = {'legend.fontsize': 'x-large',
@@ -17,20 +20,148 @@ params = {'legend.fontsize': 'x-large',
 pad=20
 size=1
 
-with open('config.yaml', 'r') as ymlfile:
-# this is a bit hard coded too but idk another work around
-# if main.py stays same folder as the config then this should work
-    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
-    # assuming that it's cool that the whole github repo is considered "home"
-    where = cfg['setup']['where']
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
-    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
-    if not os.path.exists(plots_dir):
-        os.mkdir(plots_dir)
+try:
+    with open('config.yaml', 'r') as ymlfile:
+    # this is a bit hard coded too but idk another work around
+    # if main.py stays same folder as the config then this should work
+        cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+        # assuming that it's cool that the whole github repo is considered "home"
+        where = cfg['setup']['where']
+        home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
+        plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
+        if not os.path.exists(plots_dir):
+            os.mkdir(plots_dir)
+except:
+    print('No config file, this will mess up saving')
+
+#~~~~~~~~~START CANDIDATE SCATTERPLOT/IMAGE FUNCTIONS~~~~~~~~~~~~~~~~~~~
+width=0.0002
+def candidate_scatterplot(Peak, ax = None, legend=True):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec,
+               s=50, facecolors='none', edgecolors='C0',
+               label='Candidate member stars')
+    ax.scatter(Peak.ra, Peak.dec,
+               marker='X',c='C1',
+               label=f'Peak center and radius outline')
+    radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+    ax.add_artist(radius)
+    ax.set(xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if ax is None:
+    	plt.close()
+
+def three_cutouts()
+
+def euclid_cutout(Peak, ax=None, annotation=True,legend=True):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    #insert cutout code here
+    
+    ##
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec,
+	       s=50, facecolors='none', edgecolors='C0',
+	       label='Candidate member stars')
+    if annotation==True:
+        ax.scatter(Peak.ra, Peak.dec,
+    	       marker='X',c='C1',
+    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
+        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+        ax.add_artist(radius)
+    ax.set(title = "Euclid",
+           xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if ax is None:
+    	plt.close()
+
+def des_cutout(Peak, band, ax=None, annotation=True,legend=True, access_url="https://datalab.noirlab.edu/sia/nsc_dr2", save=False, output_path=None):
+
+    ## insert cutout code here
+    service = sia.SIAService(access_url) # that default access url is to DR2
+    fov = Peak.r*1.5
+    imgTable = service.search((Peak.ra,Peak.dec), (fov/np.cos(Peak.dec*np.pi/180), fov), verbosity=2).to_table()
+    table = imgTable[(imgTable['prodtype'] == 'image') & (imgTable['obs_bandpass']==band) & \
+                    (np.char.find(np.ma.filled(imgTable['object'].astype(str), fill_value='none'),'DES')!=-1)]
+    row = table[np.argmin(table['seeing'])] #does this make sense??
+    url = row['access_url']
+    filename = download_file(url,cache=True,show_progress=False,timeout=120)
+    hdu = fits.open(filename)[0]
+    image = hdu.data
+    hdr = hdu.header
+    wcs = WCS(hdr)
+    # ax being None means that this is a standalone plot
+    if ax is None:
+        fig = plt.figure(figsize=(5,5))
+        ax = fig.add_subplot(1, 1, 1, projection=wcs)
+    ax.imshow(image, cmap='gray', vmin=image.min(), vmax=image.min()+(image.max()-image.min())/100.)
+    ##
+    
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec, transform=ax.get_transform('icrs'), s=1000./(stars.i.mag-12), 
+               facecolors='none', edgecolors='C0', linewidths=3,
+               label='Candidate member stars')
+    if annotation==True:
+        ax.scatter(Peak.ra, Peak.dec,
+    	       marker='X',c='C1',
+    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
+        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+        ax.add_artist(radius)
+    ax.set(title = "DES Legacy DR9",
+           xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if save == True:
+        if output_path is None:
+            print('You need to specify path in order to save)
+            plt.close()
+            return
+        plt.savefig(output_path)
+    # ax being None means this is standalone therefore we can close it now
+    if ax is None:
+    	plt.close()
+        
+def lsst_cutout(Peak, ax=None, annotation=True,legend=True):
+    if ax is None:
+        fig, ax = plt.subplots(figsize=(12, 8))
+    #insert cutout code here
+    
+    ##
+    stars = Peak.member_candidates
+    ax.scatter(stars.ra,stars.dec,
+	       s=50, facecolors='none', edgecolors='C0',
+	       label='Candidate member stars')
+    if annotation==True:
+        ax.scatter(Peak.ra, Peak.dec,
+    	       marker='X',c='C1',
+    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
+        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+        ax.add_artist(radius)
+    ax.set(title = "LSST",
+           xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    if legend==True:
+        ax.legend()
+    ax.invert_xaxis()
+    if ax is None:
+    	plt.close()
+    
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
-    fig, ax = plt.subplots(figsize=(12, 8))
+def map_plot(hsp_map, title, color_lims = (24,26),
+	     save = True, filename = '', ax = None):
+    if ax is None:
+    	fig, ax = plt.subplots(figsize=(12, 8))
     sp = skyproj.MollweideSkyproj(ax=ax)
     sp.draw_hspmap(hsp_map, vmin = color_lims[0], vmax = color_lims[1])
 
@@ -43,56 +174,68 @@ def map_plot(hsp_map, title, color_lims = (24,26), save = True, filename = ''):
         if filename == '':
             filename = title.lower.replace(' ','').replace('-','_').replace(',','_')
         plt.savefig(plots_dir + f'/maps/{filename}.png')
-
-    plt.close()
+    if ax is None:
+    	plt.close()
 
 #~~~~~~~~~~START ISOCHRONE FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def isochrone_plot(iso, distance_modulus, uncut_data, cut_data,
-                   title = '',
-                   save = True, filename = ''):
+def isochrone_plot(iso, distance_modulus, 
+                   isostars_band1, isostars_band2,
+                   title,
+                   allstars_band1=None, allstars_band2=None,
+                   save = True, filename = '', ax=None):
     '''
-    Plots a g v g-r CMD with isochrone line on top
+    Plots a CMD (any bands) with isochrone line on top
 
     Parameters
     ----------
     iso : Isochrone object
     distance_modulus : float, converted from distance using ugali coordinate tools
-    uncut_data : Table or other dataframe type, all the data without an isochrone cut
-    cut_data : Table or other dataframe type, data with isochrone cut applied
-    title : string, title for the plot, the default is just generic tract and survey information
+    isostars_band1, isostars_band2 : Band class of the stars within isochrone cut (e.g. isostars.g)
+    title : string, title for the plot (required)
+    allstars_band1, allstars_band2 : default None, else Band class of the stars NOT within isochrone cut (e.g. allstars.g)
+                                     if they're not None, the data will be plotted as a scatter
+    save : default True, decides whether to save the file or not
+    filename : default '', else will be the title with special characters and spaces removed and letters turned lowercase
 
     Returns
     -------
-    Pretty plot, saves to plots_dir/isochrones/{tract}_{lsst_survey}_{euclid_survey}.png
+    Pretty plot, saves to plots_dir/isochrones/{filename}.png
     '''
-
-    fig, ax = plt.subplots(1,1, figsize=(6,6))
+    if ax is None:
+    	fig, ax = plt.subplots(1,1, figsize=(6,6))
+        
     index = np.min(np.where(iso.stage == iso.hb_stage)[0]) + 1
 
     ax.plot(iso.mag_1[0:index] - iso.mag_2[0:index], iso.mag_1[0:index] + distance_modulus, color='k')
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
     #ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
     #ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
-    ax.scatter(uncut_data.g_mag - uncut_data.r_mag,
-           uncut_data.g_mag,
-           s=10, c = 'r', alpha =0.3,
-           label = 'Before cut')
-    ax.scatter(cut_data.g_mag - cut_data.r_mag,
-               cut_data.g_mag,
+    
+    if allstars_band1 is not None and allstars_band2 is not None:
+        ax.scatter(allstars_band1.mag - allstars_band2.mag,
+                   allstars_band1.mag, s=10, c = 'r', alpha =0.3, label = 'All stars')
+    elif allstars_band1 is None and allstars_band2 is not None or allstars_band1 is not None and allstars_band2 is None:
+        print('Only one band of uncut data was inputted. Input both bands to plot this data')
+        
+    ax.scatter(isostars_band1.mag - isostars_band2.mag,
+               isostars_band1.mag,
                s=10, c = 'b', alpha =0.5,
-               label = 'After cut')
-    if title == '':
-        title = f'Dist Mod {distance_modulus}, Tract {uncut_data.tract} \n {uncut_data.lsst_survey} and {uncut_data.euclid_survey} Data'
-    ax.set(xlabel = 'g-r', ylabel = 'g', xlim = (-1,4), ylim = (28,18), title = title)
+               label = 'Stars within isochrone template')
+        
+    ax.set(xlabel = f'{isostars_band1.str} - {isostars_band2.str}', ylabel = f'{isostars_band1.str}', xlim = (-1,4), ylim = (28,18), title = title)
     ax.legend()
 
     if save == True:
         if not os.path.exists(plots_dir + f'/isochrones'):
             os.mkdir(plots_dir + f'/isochrones')
         if filename == '':
-            filename = f'{uncut_data.tract}_{uncut_data.lsst_survey}_{uncut_data.euclid_survey}'
+            specials = ":,.;&-*()=+/'\n"
+            filename = title.replace(' ', '').replace("'",'').lower()
+            for char in specials:
+                filename = filename.replace(char, '_')
         plt.savefig(plots_dir + f'/isochrones/{filename}.png')
-    plt.close()
+    if ax is None: 	
+    	plt.close()
 
 #~~~~~~~~~~START MATCH VERIFICATION FUNCTIONS ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def oneD_hist_matches(match1Band, unmatch1Band, full1Band, match2Band, unmatch2Band, full2Band, SearchRegion, PrimaryData, SecondaryData):

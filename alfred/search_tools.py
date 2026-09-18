@@ -23,32 +23,47 @@ with open('config.yaml', 'r') as ymlfile:
         os.mkdir(results_dir)
 
 
-def isochrone_search(band1, band2, distance_modulus, starData, age=12.0, Z=0.0002, mag_max=26, save_graph=True):
+def isochrone_search(band1, band2, distance_modulus, starData, SearchRegion, age=12.0, Z=0.0002, mag_max=26, save_graph=True):
     #the isochrone with Euclid, Roman, and LSST bands is 'mixed'
+    if 'des' in starData.survey.lower():
+        survey='des'
+    else:
+        survey='mixed'
     iso = isochrone.Isochrone(
                               age=age,
                               metallicity=Z,
                               distance_modulus=distance_modulus,
-                              survey= 'mixed',
+                              survey= survey,
                               band_1= band1.str,
                               band_2= band2.str)
-    
-    #cut = cut_isochrone_path(star_data.g_mag, star_data.r_mag,
-    #                         star_data.g_magerr, star_data.r_magerr,
-    #                         iso, radius = 0.1)
     
     iso_sel = cut_isochrone_path(band1.mag, band2.mag,
                              band1.magerr, band2.magerr,
                              iso, radius = 0.1, mag_max=mag_max)
+
+    '''
+    Note about scipy interpolate used in cut_isochrone_path:
+        Neither of these two approaches (masked arrays and filling missing values with Nans) is directly supported 
+        in scipy.interpolate. Individual routines may offer partial support, and/or workarounds, but in general, 
+        the library firmly adheres to the IEEE 754 semantics where a NaN means not-a-number, 
+        i.e. a result of an illegal mathematical operation (e.g., division by zero), not missing.
+    '''
+    
     iso_starsData = starData.apply_mask(iso_sel)
+    isostars_band1 = band1.apply_mask(iso_sel)
+    isostars_band2 = band2.apply_mask(iso_sel)
 
     if save_graph == True:
+        title = f'''{starData.survey.replace('_', ' & ')} Stars (nside {SearchRegion.nside} pixel {SearchRegion.pixel}) 
+                    \n Isochrone: {age} Gyr, Z={Z} at Dist Mod = {distance_modulus}'''
         # this plotting function is to be edited/generalized
-        plotting_functions.isochrone_plot(iso, distance_modulus,
-                                          starData, iso_starsData,
-                                          save=True)
+        plotting_functions.isochrone_plot(iso, distance_modulus, 
+                                          isostars_band1, isostars_band2,
+                                          title, 
+                                          allstars_band1=band1, allstars_band2=band2,
+                                          save = True, filename = '')
 
-    return iso_sel, iso_starsData
+    return iso_sel, iso_starsData, iso
         
 def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.01, mag_max = 26, return_all=False):
     #Authors: Keith Bechtol, Sid Mau from the "simple" algorithm: https://github.com/DarkEnergySurvey/simple/tree/master
@@ -94,8 +109,10 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.01, mag_max = 26,
         return cut
 
 def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None, verbose=True):
-    #credit to the authors of simple_adl-- I had to copy/paste to avoid things in their package overriding my config file variables
-    #and I had to adjust one thing to get it working with my Region object: changed the line if (len)
+    #credit to the authors of simple_adl
+        #I had to copy/paste to avoid things in their package overriding my config file variables
+        #and I had to adjust one thing to get it working with my Region object
+            #changed the line -> if (len(region.data.data[iso_sel]))
     """
     Idea: 
     Send a data extension that goes to faint magnitudes, e.g., g < 24.

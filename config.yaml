@@ -4,15 +4,15 @@ setup : #user input
     nersc : '$HOME/ufd_alfred'
     usdf : '$HOME/rubin-user/ufd_alfred'
   pckg_dir : 'alfred' #path to the package
-  data_dir : 'euclid_data' #path to the external data needed (maps, euclid data, etc)
+  data_dir : 'external_data' #path to the external data needed (maps, euclid data, etc)
 output:
   results_dir : 'results'
   plots_dir : 'plots'
 
-nside : 32
+nside : 64
 
 #change with new data releases
-opt_survey : 'des_y6' #or 'lsst_dp1' or 'des_y6'
+opt_survey : 'des_y6' #or 'lsst_dp1', 'lsst_dp2', or 'des_y6'
 ir_survey : 'euclid_q1' #or 'euclid dr1' or eventually 'roman'
 
 lsst_dp1:
