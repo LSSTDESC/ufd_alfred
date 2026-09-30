@@ -4,6 +4,8 @@ from astropy.table import Table
 from astropy import units as u
 import matplotlib.pyplot as plt
 import os
+import matplotlib.gridspec as gridspec
+
 
 class Data():
     def __init__(self, data, *args, **kwargs):
@@ -243,7 +245,7 @@ class Peak():
         self.n_model = results_T[7]
         self.overlapping_peaks = []
         try:
-            self.id = f'{round(self.ra,5)}_{round(self.dec,5)}_{int(self.distance)}'
+            self.id = f'{round(self.sig,5)}_{round(self.ra,5)}_{round(self.dec,5)}_{int(self.distance)}'
         except:
             self.id = np.nan
         self.member_candidates = iso_starsData
@@ -262,47 +264,81 @@ class Peak():
         self.member_candidates = member_candidates
         return member_candidates
         
-    def diagnostic_plots(self, plots_dir, save=True):
-        
-        fig, axes = plt.subplots(2,2,figsize=(20,15))
-        ax = axes.flatten()
+    def diagnostic_plots(self, background_stars, plots_dir, data_dir, n_plots = 4, save=True):
+        '''
+        n plots has to be even with this logic I suppose (probably 4 or 6)
+        will add axes with shape (2, n_plots/2)
+        '''
+        n_cols = int(n_plots/2)
+        fig = plt.figure(figsize=(10,10))
+        spec = gridspec.GridSpec(ncols=n_cols, nrows=2, figure=fig)
         # isochrone plot with just the member_candidates
-        
         plotting_functions.isochrone_plot(self.iso, self.distance_modulus,
                                             self.member_candidates.g, self.member_candidates.r,
                                             "",
-                                            save = False, ax = ax[0])
+                                            save = False, ax = fig.add_subplot(spec[0,0]))
         # scatterplot of the stars, radius, center, etc
-        plotting_functions.candidate_scatterplot(self, ax = ax[1],legend=True)
+        #plotting_functions.candidate_scatterplot(self, ax = fig.add_subplot(spec[0,1]),legend=True)
+        plotting_functions.candidates_v_background(self, background_stars, ax=fig.add_subplot(spec[0,1]),legend=True)
         cutout_names = self.member_candidates.survey.lower()
+        pixel_data_dir = f'/nside{self.region.nside}_pixel{self.region.pixel}'
         survey_count = 0
+        
         if 'euclid' in cutout_names:
-            plotting_functions.euclid_cutout(self, ax=ax[2],legend=False)
+            parts = cutout_names.split('_')
+            name = parts[parts.index('euclid')] + '_' + parts[parts.index('euclid')+1]
+            euclid_pixel_dir = data_dir + '/' + name + pixel_data_dir
+            if not os.path.exists(euclid_pixel_dir):
+                os.mkdir(euclid_pixel_dir)
+            euclid_file = euclid_pixel_dir + f'/{self.id}'
+            cutout_radius = self.r*3600*1.5 #r in deg, convert to arcsec
+            try:
+                plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, cutout_radius)
+                plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
+                                              legend=False,subplot=spec[1,0],fig=fig)
+            except:
+                try:
+                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 120)
+                    plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
+                                                  legend=False,subplot=spec[1,0],fig=fig)
+                    print(euclid_file)
+                except:
+                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 1)
+                    plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
+                                                  legend=False,subplot=spec[1,0],fig=fig)
+                    print(euclid_file)
+
             survey_count+=1
+            
         if 'des' in cutout_names:
+            des_file_path = plotting_functions.saveDESCutout(self.ra, self.dec)
             if survey_count == 1:
                 #this means we've already plotted euclid
-                desax = ax[3]
+                des_spec = spec[1,1]
             else:
-                desax = ax[2]
-            plotting_functions.des_cutout(self, ax=desax,legend=False)
+                des_spec = spec[1,0]
+            parts = cutout_names.split('_')
+            title = parts[parts.index('des')] + ' ' + parts[parts.index('des')+1]
+            plotting_functions.plotCutout(des_file_path, title.upper(), self,
+                                          flip_x=True,subplot=des_spec,fig=fig)
             survey_count+=1
-        if 'lsst' in cutout_names:
-            if survey_count==0:
-                #this means we haven't plotted any cutouts yet
-                lsstax = ax[2]
-            elif survey_count==1:
-                #this means we've already plotted euclid or des cutouts
-                lsstax = ax[3]
-            plotting_functions.lsst_cutout(self, ax=lsstax,legend=False)
-
-        plt.suptitle(f"Peak at {round(self.ra,2)},{round(self.dec,2)} deg, r = {round(self.r,2)} deg, d = {int(self.distance)} kpc, {self.sig} sigma")
+        
+        #if 'lsst' in cutout_names:
+        #    if survey_count==0:
+        #        #this means we haven't plotted any cutouts yet
+        #        lsstax = ax[2]
+        #    elif survey_count==1:
+        #        #this means we've already plotted euclid or des cutouts
+        #        lsstax = ax[3]
+        #    plotting_functions.lsst_cutout(self, ax=lsstax,legend=False)
+        
+        plt.suptitle(f"Peak at {round(self.ra,2)},{round(self.dec,2)} deg, r = {round(self.r,2)} deg, d = {int(self.distance)} kpc, {self.sig} sigma", y=1, fontsize=12)
         plt.tight_layout()
         if save == True:
             pixel_plots_dir = plots_dir + f'/nside{self.region.nside}_pixel{self.region.pixel}'
             if not os.path.exists(pixel_plots_dir):
                 os.mkdir(pixel_plots_dir)
-            plt.savefig(pixel_plots_dir + f'/{self.id}_diagnostic_plots.png')
+            plt.savefig(pixel_plots_dir + f'/{self.id}_diagnostic_plots.png',dpi=300, bbox_inches = "tight")
         plt.close()
 
     

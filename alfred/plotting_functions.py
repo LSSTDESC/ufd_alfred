@@ -5,10 +5,17 @@ import seaborn as sns
 from alfred import utils
 import yaml
 import os
+from astroquery_updated.esa.euclid import Euclid
 from matplotlib.patches import Circle, Annulus
 from pyvo.dal import sia
 from astropy.utils.data import download_file
+from astropy.io import fits
 from astropy.wcs import WCS
+from astropy.coordinates import SkyCoord
+from astropy import units as u
+from astropy.visualization import astropy_mpl_style, ImageNormalize, PercentileInterval, AsinhStretch,SqrtStretch
+
+
 ## ~~~~~~~~~ PLOTS ~~~~~~~~~~~~
 
 params = {'legend.fontsize': 'x-large',
@@ -41,120 +48,194 @@ def candidate_scatterplot(Peak, ax = None, legend=True):
         fig, ax = plt.subplots(figsize=(12, 8))
     stars = Peak.member_candidates
     ax.scatter(stars.ra,stars.dec,
-               s=50, facecolors='none', edgecolors='C0',
+               s=50, facecolors='none', edgecolors='C2',
                label='Candidate member stars')
     ax.scatter(Peak.ra, Peak.dec,
-               marker='X',c='C1',
+               marker='X',c='r',
                label=f'Peak center and radius outline')
-    radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
+    radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='r')
     ax.add_artist(radius)
     ax.set(xlabel='RA (deg)', ylabel='Dec (deg)',
            xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
     if legend==True:
-        ax.legend()
+        ax.legend(loc='upper right')
     ax.invert_xaxis()
     if ax is None:
     	plt.close()
 
-def three_cutouts()
-
-def euclid_cutout(Peak, ax=None, annotation=True,legend=True):
+def candidates_v_background(Peak, background_stars, ax = None, legend=True):
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 8))
-    #insert cutout code here
-    
-    ##
-    stars = Peak.member_candidates
-    ax.scatter(stars.ra,stars.dec,
-	       s=50, facecolors='none', edgecolors='C0',
-	       label='Candidate member stars')
-    if annotation==True:
-        ax.scatter(Peak.ra, Peak.dec,
-    	       marker='X',c='C1',
-    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
-        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
-        ax.add_artist(radius)
-    ax.set(title = "Euclid",
-           xlabel='RA (deg)', ylabel='Dec (deg)',
-           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
-    if legend==True:
-        ax.legend()
-    ax.invert_xaxis()
-    if ax is None:
-    	plt.close()
-
-def des_cutout(Peak, band, ax=None, annotation=True,legend=True, access_url="https://datalab.noirlab.edu/sia/nsc_dr2", save=False, output_path=None):
-
-    ## insert cutout code here
-    service = sia.SIAService(access_url) # that default access url is to DR2
-    fov = Peak.r*1.5
-    imgTable = service.search((Peak.ra,Peak.dec), (fov/np.cos(Peak.dec*np.pi/180), fov), verbosity=2).to_table()
-    table = imgTable[(imgTable['prodtype'] == 'image') & (imgTable['obs_bandpass']==band) & \
-                    (np.char.find(np.ma.filled(imgTable['object'].astype(str), fill_value='none'),'DES')!=-1)]
-    row = table[np.argmin(table['seeing'])] #does this make sense??
-    url = row['access_url']
-    filename = download_file(url,cache=True,show_progress=False,timeout=120)
-    hdu = fits.open(filename)[0]
-    image = hdu.data
-    hdr = hdu.header
-    wcs = WCS(hdr)
-    # ax being None means that this is a standalone plot
-    if ax is None:
-        fig = plt.figure(figsize=(5,5))
-        ax = fig.add_subplot(1, 1, 1, projection=wcs)
-    ax.imshow(image, cmap='gray', vmin=image.min(), vmax=image.min()+(image.max()-image.min())/100.)
-    ##
-    
-    stars = Peak.member_candidates
-    ax.scatter(stars.ra,stars.dec, transform=ax.get_transform('icrs'), s=1000./(stars.i.mag-12), 
-               facecolors='none', edgecolors='C0', linewidths=3,
+    h = ax.hist2d(background_stars.ra, background_stars.dec, cmap='viridis', alpha=0.5, bins=150)
+    ax.scatter(Peak.member_candidates.ra, Peak.member_candidates.dec,
+               s=50, facecolors='none', edgecolors='r',
                label='Candidate member stars')
-    if annotation==True:
-        ax.scatter(Peak.ra, Peak.dec,
-    	       marker='X',c='C1',
-    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
-        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
-        ax.add_artist(radius)
-    ax.set(title = "DES Legacy DR9",
-           xlabel='RA (deg)', ylabel='Dec (deg)',
-           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    ax.scatter(Peak.ra, Peak.dec,
+               marker='X',c='r',
+               label=f'Peak center and radius outline')
+    radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='r')
+    ax.add_artist(radius)
+    ax.set(xlabel='RA (deg)', ylabel='Dec (deg)',
+           xlim=(Peak.ra-Peak.r*3, Peak.ra+Peak.r*3),ylim=(Peak.dec-Peak.r*3, Peak.dec+Peak.r*3))
     if legend==True:
-        ax.legend()
+        ax.legend(loc='upper right')
     ax.invert_xaxis()
-    if save == True:
-        if output_path is None:
-            print('You need to specify path in order to save)
-            plt.close()
-            return
-        plt.savefig(output_path)
-    # ax being None means this is standalone therefore we can close it now
     if ax is None:
     	plt.close()
-        
-def lsst_cutout(Peak, ax=None, annotation=True,legend=True):
-    if ax is None:
-        fig, ax = plt.subplots(figsize=(12, 8))
-    #insert cutout code here
+    cbar = plt.colorbar(h[3],ax=ax)
+
+def three_cutouts():
+    '''
+    take ra and dec, return a plot with des, euclid, lsst cutouts (or any 3 surveys)
+    '''
+    return None
+
+def saveDESCutout(ra, dec, radius=0.1, band='i'):
+    '''
+    radius in degrees
+    access url is to DR2
+    defaulting to plotting the i band (to match Euclid VIS)
+
+    **this function returns a filename which astropy automatically caches**
+    https://github.com/astro-datalab/notebooks-latest/blob/master/04_HowTos/SiaService/How_to_use_the_Simple_Image_Access_service.ipynb
+    '''
+    #https://datalab.noirlab.edu/data/dark-energy-survey#des-dr2
+    DEF_ACCESS_URL = "https://datalab.noirlab.edu/sia/des_dr2"
+    service = sia.SIAService(DEF_ACCESS_URL)
     
-    ##
-    stars = Peak.member_candidates
-    ax.scatter(stars.ra,stars.dec,
-	       s=50, facecolors='none', edgecolors='C0',
-	       label='Candidate member stars')
-    if annotation==True:
-        ax.scatter(Peak.ra, Peak.dec,
-    	       marker='X',c='C1',
-    	       label=f'Peak center ({round(Peak.ra,2)},{round(Peak.dec,2)} deg) and radius = {round(Peak.r,2)}')
-        radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='C1')
-        ax.add_artist(radius)
-    ax.set(title = "LSST",
-           xlabel='RA (deg)', ylabel='Dec (deg)',
-           xlim=(Peak.ra-Peak.r*1.2, Peak.ra+Peak.r*1.2),ylim=(Peak.dec-Peak.r*1.2, Peak.dec+Peak.r*1.2))
+    imgTable = service.search((ra,dec), (radius/np.cos(dec*np.pi/180), radius), verbosity=2).to_table()
+    #trying to get the table down to just one row
+    sel0 = np.char.startswith(imgTable['obs_bandpass'].astype(str),band)
+    print("The full image list contains", len(imgTable[sel0]), "entries with bandpass="+band)
+    sel = sel0 & ((imgTable['proctype'] == 'Stack') & (imgTable['prodtype'] == 'image')) # basic selection
+    Table = imgTable[sel] # select
+    
+    if (len(Table)>0):
+        row = Table[np.argmax(Table['exptime'].data.data.astype('float'))] # pick image with longest exposure time
+        url = row['access_url'] # get the download URL
+        print ('downloading deepest ' + band + ' image...')
+        return download_file(url,cache=True,show_progress=False,timeout=120)
+    else:
+        return None
+
+def saveEuclidCutout(output_file, ra, dec, cutout_radius):
+    # https://astroquery.readthedocs.io/en/latest/esa/euclid/euclid.html#mer-cutouts
+    """
+    Retrieves a FITS image cutout from the Euclid Q1 VIS mosaic for a specific coordinate.
+
+    This function queries the Euclid TAP server for 'VIS' instrument mosaic products 
+    that overlap with the specified Right Ascension and Declination. It requires exactly 
+    one overlapping file to proceed, and downloads the resulting spatial cutout.
+
+    Parameters
+    ----------
+    output_file : str
+        The local destination file path and name for the downloaded FITS cutout 
+        (e.g., 'my_target_cutout.fits').
+    ra : float
+        Right Ascension of the target center in decimal degrees (ICRS).
+    dec : float
+        Declination of the target center in decimal degrees (ICRS).
+    cutout_radius : float
+        The requested radius of the image cutout in arcseconds.
+
+    Raises
+    ------
+    ValueError
+        If the spatial query returns zero files, or more than one overlapping file.
+
+    Notes
+    -----
+    Requires `astroquery.esa.euclid`, `astropy.coordinates.SkyCoord`, and `astropy.units`.
+    """
+
+    coord = SkyCoord(ra=ra, dec=dec, unit='deg', frame='icrs')
+    
+    # Step 1: Query file paths
+    radius   = 0.5 / 60.
+    query    = f"""
+    SELECT 
+    file_name, file_path, datalabs_path, instrument_name, filter_name, ra, dec, creation_date, product_type, patch_id_list, tile_index 
+    FROM 
+    q1.mosaic_product 
+    WHERE 
+    instrument_name='VIS' AND INTERSECTS(CIRCLE({ra}, {dec}, {radius}), fov)=1 
+    ORDER BY 
+    file_name
+    """
+    results = Euclid.launch_job_async(query).get_results()
+    if len(results) > 1:
+        #breakpoint()
+        #raise ValueError("Expected 1 file and got %i files"%(len(results)))
+        print("Expected 1 file and got %i files"%(len(results)))
+
+        # Select the closest file
+        coord_results = SkyCoord(ra=results['ra'], dec=results['dec'], unit='deg', frame='icrs')
+        results = results[np.argmin(coord.separation(coord_results))]
+        file_path  = f"{results['file_path']}/{results['file_name']}"
+    elif len(results) == 1:
+        file_path  = f"{results['file_path'][0]}/{results['file_name'][0]}"
+    else:
+        print("Expected 1 file and got %i files"%(len(results)))
+        return None
+
+    # Step 2: Get cutout
+    cutout_radius = cutout_radius * u.arcsec
+    Euclid.get_cutout(
+        file_path=file_path,
+        coordinate=coord,
+        radius=cutout_radius, 
+        output_file=output_file,
+        verbose=True,
+	)
+
+def plotCutout(in_filename, title, Peak,
+               flip_x=False, rotate_ax=False, ralim=None, declim=None,
+               legend=True, subplot=None, fig=None, save=False, out_filename=''):
+    hdul = fits.open(in_filename)
+    image = hdul[0].data
+    hdr = hdul[0].header
+    wcs = WCS(hdr)
+    if rotate_ax == True:
+        image=image.swapaxes(0,1)
+        wcs=wcs.swapaxes(0,1)
+    hdul.close()
+    
+    if subplot is None:
+        fig = plt.figure()
+        ax = fig.add_subplot(1, 1, 1, projection=wcs)
+    else:
+        ax = fig.add_subplot(subplot, projection=wcs)
+        
+    im = ax.imshow(image, cmap='gray_r', norm=ImageNormalize(image, interval=PercentileInterval(99.1), vmin=0))#, stretch=AsinhStretch()))
+    
+    starsData = Peak.member_candidates
+    center_coord = SkyCoord(ra=Peak.ra*u.deg,dec=Peak.dec*u.deg, frame='icrs')
+    catalog_coords = SkyCoord(ra=starsData.ra*u.deg,dec=starsData.dec*u.deg, frame='icrs')
+    center_x, center_y = wcs.world_to_pixel(center_coord)
+    catalog_x, catalog_y = wcs.world_to_pixel(catalog_coords)
+    ax.scatter(center_x, center_y, marker='x', c='r',label=f'Center of Peak \n at {round(Peak.ra,4)},{round(Peak.dec,4)} deg')
+    ax.scatter(catalog_x, catalog_y, s=50, facecolors='none', edgecolors='C2', label='Member candidate stars')
     if legend==True:
-        ax.legend()
-    ax.invert_xaxis()
-    if ax is None:
-    	plt.close()
+        ax.legend(bbox_to_anchor=(1, -0.1))
+    ax.set_title(title)
+    ax.coords['ra'].set_format_unit(u.deg)
+    if flip_x == True:
+        ax.invert_xaxis()
+    if ralim is not None and declim is not None:
+        world_coords = SkyCoord(ra=ralim*u.deg, dec=declim*u.deg, frame='icrs')
+        pixel_coords_x, pixel_coords_y = wcs.world_to_pixel(world_coords)
+        ax.set_xlim(pixel_coords_x)
+        ax.set_ylim(pixel_coords_y)
+
+    #DES Code:   im = ax.imshow(image, cmap='gray',vmin=image.min(), vmax=image.min()+(image.max()-image.min())/100.)
+    #ax.scatter(df['ra'], df['dec'], transform=ax.get_transform('icrs'), s=1000./(df['gmag']-12), 
+    #           edgecolor='green', facecolor='none', linewidths=3)
+    colorbar = plt.colorbar(im)
+ 
+    if save==True:
+        plt.savefig(out_filename)
+        plt.close()
     
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -223,7 +304,7 @@ def isochrone_plot(iso, distance_modulus,
                label = 'Stars within isochrone template')
         
     ax.set(xlabel = f'{isostars_band1.str} - {isostars_band2.str}', ylabel = f'{isostars_band1.str}', xlim = (-1,4), ylim = (28,18), title = title)
-    ax.legend()
+    ax.legend(loc='upper right')
 
     if save == True:
         if not os.path.exists(plots_dir + f'/isochrones'):

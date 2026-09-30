@@ -29,6 +29,9 @@ with open('config.yaml', 'r') as ymlfile:
     plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
     if not os.path.exists(plots_dir):
         os.mkdir(plots_dir)
+    data_dir = os.path.join(os.path.expandvars(cfg['setup']['home_dir'][where]), cfg['setup']['data_dir'])
+    if not os.path.exists(data_dir):
+        os.mkdir(data_dir)
 
     nside = cfg['nside']
 
@@ -207,7 +210,8 @@ moresig_Peaks = list(set(moresig_Peaks))
 for Peak in moresig_Peaks:
     print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
     Peak.stars_within_the_radius(scale=1.1)
-    Peak.diagnostic_plots(plots_dir, save=True)  
+    background_stars = stars#.apply_mask(projector.angsep(Peak.ra, Peak.dec, stars.ra, stars.dec) < Peak.r*3)
+    Peak.diagnostic_plots(background_stars, plots_dir, data_dir, save=True)  
 utils.write_peak_result(moresig_Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')
 
     

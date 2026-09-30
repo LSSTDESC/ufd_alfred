@@ -5,6 +5,9 @@ import os
 import astropy
 from alfred import DataObjects
 from astropy.table import Table
+from astropy.coordinates import SkyCoord
+from astropy import units as u
+
 
 # function to check if the data doesn't exist already and if I want to rewrite it
 def check_if_query(path, preload):
