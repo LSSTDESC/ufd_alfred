@@ -1,4 +1,4 @@
-from alfred import utils, masks_and_filters, plotting_functions
+from alfred import utils, masks_and_filters, plotting_functions, search_tools
 from ugali.utils import projector
 from astropy.table import Table
 from astropy import units as u
@@ -252,7 +252,7 @@ class Peak():
         self.iso = iso
         self.region = SearchRegion
 
-    def stars_within_the_radius(self, iso_starsData=None, scale=1.1):
+    def stars_within_the_radius(self, iso_starsData=None, scale=1.1, set_attr = True):
         '''
         scale is to rescale the radius to allow to be more inclusive
         '''
@@ -261,27 +261,41 @@ class Peak():
         angsep = projector.angsep(iso_starsData.ra, iso_starsData.dec, self.ra, self.dec)
         radius_mask = (angsep <= self.r*scale)
         member_candidates = iso_starsData.apply_mask(radius_mask)
-        self.member_candidates = member_candidates
+        if set_attr==True:
+            self.member_candidates = member_candidates
         return member_candidates
         
-    def diagnostic_plots(self, background_stars, plots_dir, data_dir, n_plots = 4, save=True):
+    def diagnostic_plots(self, background_stars, plots_dir, data_dir, n_plots = 4, preload=True, save=True):
         '''
         n plots has to be even with this logic I suppose (probably 4 or 6)
         will add axes with shape (2, n_plots/2)
         '''
         n_cols = int(n_plots/2)
-        fig = plt.figure(figsize=(10,10))
+        fig = plt.figure(figsize=(17,10))
         spec = gridspec.GridSpec(ncols=n_cols, nrows=2, figure=fig)
         # isochrone plot with just the member_candidates
+        ax1 = fig.add_subplot(spec[0,0])
         plotting_functions.isochrone_plot(self.iso, self.distance_modulus,
-                                            self.member_candidates.g, self.member_candidates.r,
-                                            "",
-                                            save = False, ax = fig.add_subplot(spec[0,0]))
+                                          self.member_candidates.g, self.member_candidates.r,
+                                          "",
+                                          allstars_band1=background_stars.g, allstars_band2=background_stars.r,
+                                          iso_label_override = "Stars within r*1.1 deg \n and fit isochrone template",
+                                          all_label_override = "All stars within r*2 deg", legend=False,
+                                          save = False, ax = ax1)
+        iso_sel = search_tools.cut_isochrone_path(background_stars.g.mag, background_stars.r.mag,
+                                     background_stars.g.magerr, background_stars.r.magerr,
+                                     self.iso, radius = 0.1, mag_max=26)
+        iso_larger_sep = background_stars.apply_mask(iso_sel)
+        ax1.scatter(iso_larger_sep.g.mag - iso_larger_sep.r.mag, iso_larger_sep.g.mag, label = "Stars within r*2 deg \n and fit isochrone template", c='k', alpha=0.4, s=10)
+        ax1.legend(loc='upper right')
         # scatterplot of the stars, radius, center, etc
         #plotting_functions.candidate_scatterplot(self, ax = fig.add_subplot(spec[0,1]),legend=True)
         plotting_functions.candidates_v_background(self, background_stars, ax=fig.add_subplot(spec[0,1]),legend=True)
         cutout_names = self.member_candidates.survey.lower()
         pixel_data_dir = f'/nside{self.region.nside}_pixel{self.region.pixel}'
+
+        plotting_functions.density_v_r(self, background_stars, iso_larger_sep, ax=fig.add_subplot(spec[0,2]),legend=True)
+        
         survey_count = 0
         
         if 'euclid' in cutout_names:
@@ -292,22 +306,20 @@ class Peak():
                 os.mkdir(euclid_pixel_dir)
             euclid_file = euclid_pixel_dir + f'/{self.id}'
             cutout_radius = self.r*3600*1.5 #r in deg, convert to arcsec
-            try:
-                plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, cutout_radius)
-                plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
-                                              legend=False,subplot=spec[1,0],fig=fig)
-            except:
+            if utils.check_if_query(euclid_file, preload):
+                print('Check tells me to download Euclid image')
                 try:
-                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 120)
-                    plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
-                                                  legend=False,subplot=spec[1,0],fig=fig)
-                    print(euclid_file)
+                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, cutout_radius)
                 except:
-                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 1)
-                    plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
-                                                  legend=False,subplot=spec[1,0],fig=fig)
-                    print(euclid_file)
-
+                    try:
+                        plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 120)
+                        print(euclid_file)
+                    except:
+                        plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 1)
+                        print(euclid_file)
+                    
+            plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
+                                              legend=False,subplot=spec[1,0],fig=fig)
             survey_count+=1
             
         if 'des' in cutout_names:

@@ -13,7 +13,9 @@ from astropy.io import fits
 from astropy.wcs import WCS
 from astropy.coordinates import SkyCoord
 from astropy import units as u
-from astropy.visualization import astropy_mpl_style, ImageNormalize, PercentileInterval, AsinhStretch,SqrtStretch
+from astropy.visualization import astropy_mpl_style, ImageNormalize, PercentileInterval, AsinhStretch,SqrtStretch, wcsaxes
+from ugali.utils import projector
+
 
 
 ## ~~~~~~~~~ PLOTS ~~~~~~~~~~~~
@@ -66,7 +68,7 @@ def candidate_scatterplot(Peak, ax = None, legend=True):
 def candidates_v_background(Peak, background_stars, ax = None, legend=True):
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 8))
-    h = ax.hist2d(background_stars.ra, background_stars.dec, cmap='viridis', alpha=0.5, bins=150)
+    h = ax.hist2d(background_stars.ra, background_stars.dec, cmap='viridis', alpha=0.5, bins=25)
     ax.scatter(Peak.member_candidates.ra, Peak.member_candidates.dec,
                s=50, facecolors='none', edgecolors='r',
                label='Candidate member stars')
@@ -75,11 +77,11 @@ def candidates_v_background(Peak, background_stars, ax = None, legend=True):
                label=f'Peak center and radius outline')
     radius = Annulus((Peak.ra, Peak.dec),Peak.r, width, color='r')
     ax.add_artist(radius)
-    ax.set(xlabel='RA (deg)', ylabel='Dec (deg)',
-           xlim=(Peak.ra-Peak.r*3, Peak.ra+Peak.r*3),ylim=(Peak.dec-Peak.r*3, Peak.dec+Peak.r*3))
+    ax.set(xlabel='RA (deg)', ylabel='Dec (deg)')
+           #xlim=(Peak.ra-Peak.r*2, Peak.ra+Peak.r*2),ylim=(Peak.dec-Peak.r*2, Peak.dec+Peak.r*2))
+    ax.invert_xaxis()
     if legend==True:
         ax.legend(loc='upper right')
-    ax.invert_xaxis()
     if ax is None:
     	plt.close()
     cbar = plt.colorbar(h[3],ax=ax)
@@ -215,9 +217,11 @@ def plotCutout(in_filename, title, Peak,
     center_x, center_y = wcs.world_to_pixel(center_coord)
     catalog_x, catalog_y = wcs.world_to_pixel(catalog_coords)
     ax.scatter(center_x, center_y, marker='x', c='r',label=f'Center of Peak \n at {round(Peak.ra,4)},{round(Peak.dec,4)} deg')
-    ax.scatter(catalog_x, catalog_y, s=50, facecolors='none', edgecolors='C2', label='Member candidate stars')
+    ax.scatter(catalog_x, catalog_y, s=50, facecolors='none', edgecolors='r', label='Member candidate stars')
+
+    wcsaxes.add_scalebar(ax, 0.01*u.deg, color='C2', label='0.01 deg')
     if legend==True:
-        ax.legend(bbox_to_anchor=(1, -0.1))
+        ax.legend(bbox_to_anchor=(1, -0.15))
     ax.set_title(title)
     ax.coords['ra'].set_format_unit(u.deg)
     if flip_x == True:
@@ -236,6 +240,68 @@ def plotCutout(in_filename, title, Peak,
     if save==True:
         plt.savefig(out_filename)
         plt.close()
+
+def density_v_r(Peak, background_stars, isochrone_stars, ax=None, legend=True):
+    c_ra, c_dec = Peak.ra, Peak.dec
+    aper_r = Peak.r
+
+    peak_stars = Peak.member_candidates
+    peak_angsep = projector.angsep(c_ra, c_dec, 
+                                   peak_stars.ra, peak_stars.dec)
+    all_angsep = projector.angsep(c_ra, c_dec,
+                                  background_stars.ra, background_stars.dec)
+    iso_angsep = projector.angsep(c_ra, c_dec,
+                                  isochrone_stars.ra, isochrone_stars.dec)
+    mesh_ra = np.linspace(np.min(background_stars.ra),np.max(background_stars.ra))
+    mesh_dec = np.linspace(np.min(background_stars.dec),np.max(background_stars.dec))
+    unif_ra, unif_dec = np.meshgrid(mesh_ra, mesh_dec)
+    uniform_angsep = projector.angsep(c_ra, c_dec,
+                                      unif_ra, unif_dec)
+    
+    density_peak = []
+    density_background = []
+    density_isochrone = []
+    density_uniform = []
+    density_all = []
+    radii = np.linspace(0.015,0.07,50)
+    for r in radii:
+        r2 = r-0.005
+        area = np.pi*(r**2) - np.pi*(r2**2)
+        
+        unif_mask = (uniform_angsep<=r)&(uniform_angsep>=r2)
+        uniform_within = np.sum(unif_mask) # circle mask: uniform_angsep<r
+        density_uniform.append(uniform_within / area)
+
+        iso_mask = (iso_angsep<=r)&(iso_angsep>=r2)
+        iso_within = np.sum(iso_mask)
+        density_isochrone.append(iso_within / area)
+
+        peak_mask = (peak_angsep<=r)&(peak_angsep>=r2)
+        peak_within = np.sum(peak_mask)
+        density_peak.append(peak_within / area)
+
+        all_mask = (all_angsep<=r)&(all_angsep>=r2)
+        all_within = np.sum(all_mask)
+        density_all.append(all_within / area)
+        background_within = all_within - peak_within
+        density_background.append(background_within / area)
+
+    density_peak = utils.normalize_array(density_peak,radii)
+    density_isochrone = utils.normalize_array(density_isochrone,radii)
+    density_background = utils.normalize_array(density_background,radii)
+    density_all = utils.normalize_array(density_all,radii)
+    density_uniform = utils.normalize_array(density_uniform,radii)
+
+    ax.plot(radii, density_peak, label = 'peak member candidates', c='r')
+    ax.plot(radii, density_isochrone, label = 'stars that fit isochrone', c='b', ls=':')
+    ax.plot(radii, density_all, label = 'all stars', c='b', ls='-')
+    ax.plot(radii, density_background, label = 'background (all-peak)', c='b', ls='--')
+    ax.plot(radii, density_uniform, label = 'uniform density test', c='k', ls='--')
+    ax.plot(np.linspace(aper_r,aper_r,10), np.linspace(0,np.max(density_peak)+1,10),
+            c='g', ls='--', alpha=0.5, label='radius of the peak aperature')
+    ax.set(xlabel = 'radius (deg)', ylabel= 'density = stars/area')
+    if legend==True:
+        ax.legend()
     
 
 #~~~~~~~~~~START MAPPING FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -263,6 +329,8 @@ def isochrone_plot(iso, distance_modulus,
                    isostars_band1, isostars_band2,
                    title,
                    allstars_band1=None, allstars_band2=None,
+                   iso_label_override = None, all_label_override = None,
+                   legend = True,
                    save = True, filename = '', ax=None):
     '''
     Plots a CMD (any bands) with isochrone line on top
@@ -291,20 +359,29 @@ def isochrone_plot(iso, distance_modulus,
     ax.plot(iso.mag_1[index:] - iso.mag_2[index:], iso.mag_1[index:] + distance_modulus, color = 'k')
     #ax.scatter(uncut_data.g_mag - uncut_data.r_mag, uncut_data.g_mag, c='r', alpha = 0.3, label = 'Before cut')
     #ax.scatter(cut_data.g_mag - cut_data.r_mag, cut_data.g_mag, c='b', alpha = 0.5, label = 'After cut')
-    
+    if all_label_override is not None:
+        label = all_label_override
+    else:
+        label = 'All stars'
     if allstars_band1 is not None and allstars_band2 is not None:
         ax.scatter(allstars_band1.mag - allstars_band2.mag,
-                   allstars_band1.mag, s=10, c = 'r', alpha =0.3, label = 'All stars')
+                   allstars_band1.mag, s=10, edgecolor = 'k', facecolor = 'w', alpha =1,
+                   label = label)
     elif allstars_band1 is None and allstars_band2 is not None or allstars_band1 is not None and allstars_band2 is None:
         print('Only one band of uncut data was inputted. Input both bands to plot this data')
-        
+
+    if iso_label_override is not None:
+        label = iso_label_override
+    else:
+        label = 'Stars within isochrone template'
     ax.scatter(isostars_band1.mag - isostars_band2.mag,
                isostars_band1.mag,
-               s=10, c = 'b', alpha =0.5,
-               label = 'Stars within isochrone template')
+               s=10, c = 'b', alpha =1,
+               label = label)
         
     ax.set(xlabel = f'{isostars_band1.str} - {isostars_band2.str}', ylabel = f'{isostars_band1.str}', xlim = (-1,4), ylim = (28,18), title = title)
-    ax.legend(loc='upper right')
+    if legend==True:
+        ax.legend(loc='upper right')
 
     if save == True:
         if not os.path.exists(plots_dir + f'/isochrones'):

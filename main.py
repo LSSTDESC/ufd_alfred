@@ -210,8 +210,8 @@ moresig_Peaks = list(set(moresig_Peaks))
 for Peak in moresig_Peaks:
     print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
     Peak.stars_within_the_radius(scale=1.1)
-    background_stars = stars#.apply_mask(projector.angsep(Peak.ra, Peak.dec, stars.ra, stars.dec) < Peak.r*3)
-    Peak.diagnostic_plots(background_stars, plots_dir, data_dir, save=True)  
+    background_stars = stars.apply_mask(projector.angsep(Peak.ra, Peak.dec, stars.ra, stars.dec) < Peak.r*2)
+    Peak.diagnostic_plots(background_stars, plots_dir, data_dir, n_plots = 6, save=True)  
 utils.write_peak_result(moresig_Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')
 
     

@@ -8,6 +8,13 @@ from astropy.table import Table
 from astropy.coordinates import SkyCoord
 from astropy import units as u
 
+    
+
+def normalize_array(y_array, x_array):
+    y_array = np.array(y_array)
+    area = np.trapezoid(y_array, x=x_array)
+    norm_arr = y_array/area
+    return norm_arr
 
 # function to check if the data doesn't exist already and if I want to rewrite it
 def check_if_query(path, preload):
