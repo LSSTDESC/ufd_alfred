@@ -165,7 +165,9 @@ def saveEuclidCutout(output_file, ra, dec, cutout_radius):
     ORDER BY 
     file_name
     """
+    print('starting query')
     results = Euclid.launch_job_async(query).get_results()
+    print(len(results))
     if len(results) > 1:
         #breakpoint()
         #raise ValueError("Expected 1 file and got %i files"%(len(results)))
@@ -194,6 +196,7 @@ def saveEuclidCutout(output_file, ra, dec, cutout_radius):
 def plotCutout(in_filename, title, Peak,
                flip_x=False, rotate_ax=False, ralim=None, declim=None,
                legend=True, subplot=None, fig=None, save=False, out_filename=''):
+    print('starting to plot cutout')
     hdul = fits.open(in_filename)
     image = hdul[0].data
     hdr = hdul[0].header

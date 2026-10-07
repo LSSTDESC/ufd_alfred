@@ -10,7 +10,7 @@ import scipy
 
 from alfred import utils, DataObjects
 
-from astroquery_updated.esa.euclid import Euclid
+
 #I really need to fix this, maybe github submodules or enforcing a version of astroquery
 #I think it's version 0.4.11 or 10?
 #from astroquery_updated.utils.tap import TapPlus
@@ -206,7 +206,9 @@ class Region():
         else:
             print(f'''Check tells me Euclid data doesn't exist for nside = {nside_datashard}, pixel = {pixel_datashard} 
                       or you do want to overwrite, querying now''')
-    
+            from astroquery_updated.esa.euclid import Euclid
+            Euclid.get_status_messages()
+            
             query = f'SELECT {INCOLS} FROM mer_catalogue'
             radius = 1.7 #going for bigger than a tract
             #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
@@ -214,8 +216,8 @@ class Region():
             #query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
             #             POLYGON('ICRS', {self.region_borders(return_type='string',step=step)})) = 1'''
             ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=step,buffer=buffer)
-            query += f''' WHERE ra BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
-                        AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
+            query += f''' WHERE right_ascension BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
+                        AND declination BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
     
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
             results_table.write(file_dir, format='parquet', overwrite = True)

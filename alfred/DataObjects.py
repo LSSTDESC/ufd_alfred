@@ -260,7 +260,11 @@ class Peak():
             iso_starsData = self.member_candidates
         angsep = projector.angsep(iso_starsData.ra, iso_starsData.dec, self.ra, self.dec)
         radius_mask = (angsep <= self.r*scale)
-        member_candidates = iso_starsData.apply_mask(radius_mask)
+        try:
+            member_candidates = iso_starsData.apply_mask(radius_mask)
+        except:
+            print('length of the stars in the radius = ', len(iso_starsData.data[radius_mask]))
+            member_candidates = iso_starsData
         if set_attr==True:
             self.member_candidates = member_candidates
         return member_candidates
@@ -292,7 +296,6 @@ class Peak():
         #plotting_functions.candidate_scatterplot(self, ax = fig.add_subplot(spec[0,1]),legend=True)
         plotting_functions.candidates_v_background(self, background_stars, ax=fig.add_subplot(spec[0,1]),legend=True)
         cutout_names = self.member_candidates.survey.lower()
-        pixel_data_dir = f'/nside{self.region.nside}_pixel{self.region.pixel}'
 
         plotting_functions.density_v_r(self, background_stars, iso_larger_sep, ax=fig.add_subplot(spec[0,2]),legend=True)
         
@@ -301,7 +304,7 @@ class Peak():
         if 'euclid' in cutout_names:
             parts = cutout_names.split('_')
             name = parts[parts.index('euclid')] + '_' + parts[parts.index('euclid')+1]
-            euclid_pixel_dir = data_dir + '/' + name + pixel_data_dir
+            euclid_pixel_dir = data_dir + '/' + name + f'/nside{self.region.nside}_pixel{self.region.pixel}'
             if not os.path.exists(euclid_pixel_dir):
                 os.mkdir(euclid_pixel_dir)
             euclid_file = euclid_pixel_dir + f'/{self.id}'
@@ -317,9 +320,12 @@ class Peak():
                     except:
                         plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 1)
                         print(euclid_file)
-                    
-            plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
-                                              legend=False,subplot=spec[1,0],fig=fig)
+                try:
+                    plotting_functions.plotCutout(euclid_file, name.replace('_',' ').upper(), self,
+                                                  legend=False,subplot=spec[1,0],fig=fig)
+                except:
+                    print('cutout did not work')
+                    pass
             survey_count+=1
             
         if 'des' in cutout_names:
@@ -347,10 +353,10 @@ class Peak():
         plt.suptitle(f"Peak at {round(self.ra,2)},{round(self.dec,2)} deg, r = {round(self.r,2)} deg, d = {int(self.distance)} kpc, {self.sig} sigma", y=1, fontsize=12)
         plt.tight_layout()
         if save == True:
-            pixel_plots_dir = plots_dir + f'/nside{self.region.nside}_pixel{self.region.pixel}'
-            if not os.path.exists(pixel_plots_dir):
-                os.mkdir(pixel_plots_dir)
-            plt.savefig(pixel_plots_dir + f'/{self.id}_diagnostic_plots.png',dpi=300, bbox_inches = "tight")
+            save_dir = plots_dir + f'/{cutout_names}_nside{self.region.nside}_pixel{self.region.pixel}'
+            if not os.path.exists(save_dir):
+                os.mkdir(save_dir)
+            plt.savefig(save_dir + f'/{self.id}_diagnostic_plots.png',dpi=300, bbox_inches = "tight")
         plt.close()
 
     

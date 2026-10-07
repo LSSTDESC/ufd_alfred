@@ -1,0 +1,18 @@
+catalog:
+  dirname: ./healpix                    # directory of catalog files                 
+  basename: "catalog_hpx%04i.fits"      # catalog file basename format               
+  objid_field       : COADD_OBJECT_ID   # unique object identifier                   
+  lon_field         : RA                # name of longitude field                    
+  lat_field         : DEC               # name of latitude field                     
+  # Color always defined as mag_1 - mag_2                                            
+  mag_1_band        : &band1 g          # name of mag_1 filter band                  
+  mag_1_field       : WAVG_MAG_PSF_G    # name of mag_1 field                        
+  mag_err_1_field   : WAVG_MAGERR_PSF_G # name of magerr_1 field                     
+  mag_2_band        : &band2 r          # name of mag_2 filter band                  
+  mag_2_field       : WAVG_MAG_PSF_R    # name of mag_2 field                        
+  mag_err_2_field   : WAVG_MAGERR_PSF_R # name of magerr_2 field                     
+  # True = band 1 is detection band; False = band 2 is detection band                
+  band_1_detection  : &detection True   # detection occurs in band_1?                
+  mc_source_id_field: MC_SOURCE_ID      # field for simulated objects                
+  # Additional selection parameters to get a sample of stars                         
+  selection         : "(np.abs(self.data['WAVG_SPREAD_MODEL_I']) < 0.003)"

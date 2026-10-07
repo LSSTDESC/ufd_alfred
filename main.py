@@ -60,11 +60,11 @@ if 'lsst' in opt_survey:
     butler = Butler(repo_config, collections=collection)
     #SkyMap =  butler.get('skyMap', skymap=skymap, collections=collection)
     tract_arr = SearchRegion.get_rubin_tracts(butler)
-    OptData = SearchRegion.rubin_query(butler, tract_arr, INCOLS)
+    OptData = SearchRegion.rubin_query(butler, INCOLS, tract_arr=tract_arr)
 ## or Load DES Data
 elif 'des' in opt_survey:
     INCOLS = utils.columns_to_query(opt_INCOLS, opt_bands, output_type='string')
-    OptData = SearchRegion.des_query(INCOLS, preload=True)
+    OptData = SearchRegion.des_query(INCOLS, preload = True)
 ## Load Euclid Data
 if 'euclid' in ir_survey:
     INCOLS = utils.columns_to_query(ir_INCOLS, ir_bands, output_type = 'string')
@@ -73,7 +73,7 @@ if 'euclid' in ir_survey:
 
 ## Merge Catalogs and Clean Up Memory
 mergedData_raw = merging_catalogs.merge_catalogs(OptData, IRData, SearchRegion,
-                                                 preload = False, validation_needed = True) #can i plot buffer and inner outlines?
+                                                 preload = True, validation_needed = True) #can i plot buffer and inner outlines?
 print('Merging catalogs completed')
 
 #was having difficulty with masked arrays
@@ -188,7 +188,6 @@ for Peak1,Peak2 in itertools.combinations(Peaks,2):
 '''
 # sort in order of significance
 Peaks.sort(key=lambda x: x.sig, reverse=True)
-print(Peaks[0].sig)
 moresig_Peaks = []
 for i in range(len(Peaks)):
     overlaps = []
@@ -209,7 +208,7 @@ moresig_Peaks = list(set(moresig_Peaks))
             
 for Peak in moresig_Peaks:
     print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
-    Peak.stars_within_the_radius(scale=1.1)
+    member_candidates = Peak.stars_within_the_radius(scale=1.1)
     background_stars = stars.apply_mask(projector.angsep(Peak.ra, Peak.dec, stars.ra, stars.dec) < Peak.r*2)
     Peak.diagnostic_plots(background_stars, plots_dir, data_dir, n_plots = 6, save=True)  
 utils.write_peak_result(moresig_Peaks, results_dir+f'/{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')

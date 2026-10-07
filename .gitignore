@@ -17,4 +17,5 @@ euclid_data/
 #files that just might not transfer well
 usdf_pipeline_tests.ipynb
 nersc_pipeline_tests.ipynb
-#plots/
+plots/
+results/
