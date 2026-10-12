@@ -535,7 +535,7 @@ def color_magnitude(band1, band2, #mag defined in dataobjects file
             if filename is None:
                 filename = title.replace(' ', '').replace('-', '_').lower()
             plt.savefig(plots_dir + f'/colormag/{filename}.png')
-        #plt.show() #uncomment to quickly see CMD without making a dir
+        plt.show() #uncomment to quickly see CMD without making a dir
         plt.close()
         
 
@@ -594,13 +594,14 @@ def color_color(band_list,
         fig, axes = plt.subplots(1,1, figsize=(7,6))
         ax = axes
 
-    band_x1, band_x2, band_y1, band_y2 = band_list
+   
+    band1_x, band2_x, band1_y, band2_y = band_list
     #cleaning out nans because the hist2d doesn't like them
-    nanmask = (~np.isnan(band_x1[1])) & (~np.isnan(band_x2[1])) & (~np.isnan(band_y1[1])) & (~np.isnan(band_y2[1]))
-    x1_mag = band_x1[1][nanmask]
-    x2_mag = band_x2[1][nanmask]
-    y1_mag = band_y1[1][nanmask]
-    y2_mag = band_y2[1][nanmask]
+    nanmask = (~np.isnan(band1_x[1])) & (~np.isnan(band2_x[1])) & (~np.isnan(band1_y[1])) & (~np.isnan(band2_y[1]))
+    x1_mag = band1_x.mag[1][nanmask]
+    x2_mag = band2_x.mag[1][nanmask]
+    y1_mag = band1_y.mag[1][nanmask]
+    y2_mag = band2_y.mag[1][nanmask]
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
