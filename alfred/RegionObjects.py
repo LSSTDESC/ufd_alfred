@@ -468,7 +468,7 @@ class Region():
             y_peak_array.append(y_peak)
             angsep_peak_array.append(angsep_peak)
         
-        return x_peak_array, y_peak_array, angsep_peak_array
+        return x_peak_array, y_peak_array, angsep_peak_array, h_g
     
     def fit_aperture(self, iso_sel, x_peak, y_peak, angsep_peak, verbose=True, extension=None):
         """
