@@ -7,20 +7,18 @@ import scipy
 import yaml
 import os
 
-with open('config.yaml', 'r') as ymlfile:
-    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
+#with open('config.yaml', 'r') as ymlfile:
+#    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
     #assuming that it's cool that the whole github repo is considered "home"
-    where = cfg['setup']['where']
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
-    pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
+#    where = cfg['setup']['where']
+#    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
+#    pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
     #external data is gonna be in a directory above - subject to change
-    data_dir = os.path.expandvars(cfg['setup']['data_dir'])
-    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
-    if not os.path.exists(plots_dir+'/isochrones'):
-        os.mkdir(plots_dir+'/isochrones')
-    results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
+#    data_dir = os.path.expandvars(cfg['setup']['data_dir'])
+#    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
+#    results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
+#    if not os.path.exists(results_dir):
+#        os.mkdir(results_dir)
 
 
 def isochrone_search(band1, band2, distance_modulus, starData, SearchRegion, age=12.0, Z=0.0002, mag_max=26, save_graph=True):

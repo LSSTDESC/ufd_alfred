@@ -194,6 +194,7 @@ print('Number of peaks before: ', len(Peaks))
 Peaks.sort(key=lambda x: x.sig, reverse=True)
 utils.write_peak_result(Peaks, results_dir+f'/BEFOREsimple_{SearchRegion.nside}_{SearchRegion.pixel}_{stars.survey}', save_format='csv')
 
+
 fig, ax = plt.subplots(1,2, figsize=(10,5))
 
 overlaps = []
@@ -216,9 +217,28 @@ for pair in overlaps:
     except:
         continue
 
-#moresig_Peaks.sort(key=lambda x: x.sig, reverse=True)
-print('Number of peaks after: ', len(Peaks))
-          
+# old code
+'''
+moresig_Peaks = []
+for i in range(len(Peaks)):
+    overlaps = []
+    for j in range(len(Peaks)):
+        if i==j:
+            continue
+        else:
+            angsep = projector.angsep(Peaks[i].ra, Peaks[i].dec, Peaks[j].ra, Peaks[j].dec)
+            if angsep<Peaks[i].r:
+                overlaps.append(Peaks[j])
+    try:
+        mostsig_Peak_i = max(overlaps, key=lambda x: x.sig)
+        moresig_Peaks.append(mostsig_Peak_i)
+    except:
+        moresig_Peaks.append(Peaks[i])
+#in case of duplicates (probably could make this logic better)
+Peaks = list(set(moresig_Peaks))
+print('Number of peaks after: ', len(Peaks))      
+'''
+
 for Peak in Peaks:
     radius = Annulus((Peak.ra, Peak.dec), Peak.r, 0.0002, color='r')
     ax[1].add_artist(radius)
@@ -228,13 +248,17 @@ for Peak in Peaks:
 plt.savefig(plots_dir + f'/{opt_survey}_{ir_survey}_nside{SearchRegion.nside}_pixel{SearchRegion.pixel}/peaks_duplicates_beforeafter.png')
 plt.close()
 
+
 final_Peaks = []
 for Peak in Peaks:
     print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
     
-    stars_within_radius = Peak.stars_within_the_radius(scale=2, set_attr = True)
-    background_stars = Peak.stars_within_the_radius(starsData=stars, r=0.1, set_attr = False)
-    Peak.diagnostic_plots(background_stars, plots_dir, data_dir, n_plots = 6, save=True, cutouts=True)  
+    stars_within_radius = Peak.stars_within_the_radius(scale=1.2, set_attr = True)
+    iso_background_stars = Peak.stars_within_the_radius(starsData=Peak.iso_stars, r=0.1, set_attr = False)
+    all_background_stars = Peak.stars_within_the_radius(starsData=stars, r=0.1, set_attr = False)
+    Peak.diagnostic_plots(iso_background_stars, all_background_stars,
+                          plots_dir, data_dir, 
+                          preload=False, save=True, cutouts=True)  
     
     if len(stars_within_radius.data)<=1:
         if type(stars_within_radius)==DataObjects.Data:

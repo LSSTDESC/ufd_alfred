@@ -40,6 +40,8 @@ try:
         plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
         if not os.path.exists(plots_dir):
             os.mkdir(plots_dir)
+        if not os.path.exists(plots_dir+'/isochrones'):
+            os.mkdir(plots_dir+'/isochrones')
 except:
     print('No config file, this will mess up saving')
 
@@ -68,7 +70,7 @@ def candidate_scatterplot(Peak, ax = None, legend=True):
 def candidates_v_background(Peak, background_stars, ax = None, legend=True):
     if ax is None:
         fig, ax = plt.subplots(figsize=(12, 8))
-    h = ax.hist2d(background_stars.ra, background_stars.dec, cmap='viridis', alpha=0.5, bins=50)
+    h = ax.hist2d(background_stars.ra, background_stars.dec, cmap='viridis', alpha=0.5, bins=30)
     if type(Peak.member_candidates)==DataObjects.DESnEuclidData:
         ax.scatter(Peak.member_candidates.ra, Peak.member_candidates.dec,
                    s=50, facecolors='none', edgecolors='r',
@@ -91,7 +93,7 @@ def candidates_v_background(Peak, background_stars, ax = None, legend=True):
 
 def saveDESCutout(ra, dec, radius=0.1, band='i'):
     '''
-    radius in degrees
+    cutout_radius in degrees
     access url is to DR2
     defaulting to plotting the i band (to match Euclid VIS)
 
@@ -117,7 +119,7 @@ def saveDESCutout(ra, dec, radius=0.1, band='i'):
     else:
         return None
 
-def saveEuclidCutout(output_file, ra, dec, cutout_radius):
+def saveEuclidCutout(output_file, ra, dec, cutout_radius=120):
     # https://astroquery.readthedocs.io/en/latest/esa/euclid/euclid.html#mer-cutouts
     """
     Retrieves a FITS image cutout from the Euclid Q1 VIS mosaic for a specific coordinate.
