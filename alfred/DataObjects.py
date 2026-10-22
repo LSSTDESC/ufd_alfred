@@ -240,6 +240,7 @@ class Peak():
         self.sig = results_T[3]
         self.distance_modulus = results_T[4]
         self.distance = projector.distanceModulusToDistance(results_T[4])
+        self.distances = [self.distance]
         self.n_obs = results_T[5]
         self.n_obs_half = results_T[6]
         self.n_model = results_T[7]
@@ -293,7 +294,9 @@ class Peak():
             plotting_functions.isochrone_plot(self.iso, self.distance_modulus,
                                               iso_background_stars.g, iso_background_stars.r,
                                               "No member stars",
+                                              allstars_band1=all_background_stars.g, allstars_band2=all_background_stars.r,
                                               iso_label_override = "Stars fit isochrone + within 0.1 deg",
+                                              all_label_override = "All stars within 0.1 deg", 
                                               legend=True,
                                               save = False, ax = ax1)
         else:
@@ -351,6 +354,8 @@ class Peak():
                                           legend=False,subplot=spec[1,0],fig=fig)
             else:
                 print('Check tells me to NOT download Euclid image')
+                plotting_functions.plotCutout(euclid_file, euclid_name.replace('_',' ').upper(), self,
+                                          legend=False,subplot=spec[1,0],fig=fig)
             
             #this cutout radius is in deg
             des_file_path = plotting_functions.saveDESCutout(self.ra, self.dec, radius = 0.1)
@@ -365,7 +370,7 @@ class Peak():
             save_dir = plots_dir + f'/{names}_nside{self.region.nside}_pixel{self.region.pixel}'
             if not os.path.exists(save_dir):
                 os.mkdir(save_dir)
-            fig.savefig(save_dir + f'/{self.id}_diagnostic_plots.png',dpi=300, bbox_inches = "tight")
+            fig.savefig(save_dir + f'/diagnostic_{self.id}.png',dpi=300, bbox_inches = "tight")
         plt.close()
 
     

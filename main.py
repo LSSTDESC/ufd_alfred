@@ -95,7 +95,7 @@ total_mask = snr_mask & flag_mask
 ## clean up data
 mergedData = mergedData_raw.apply_mask(total_mask)
 SearchRegion.data_dict[opt_survey+'-'+ir_survey] = mergedData
-print('Data cleaned and stored')
+print('Data cleaned and stored', len(mergedData.data), ' objects found')
 
 ## Select for Stars -- Zerjal + colorcolor Cuts
 colorcolor_mask = masks_and_filters.niroptical_color_stars(mergedData)
@@ -109,6 +109,7 @@ stars = type(mergedData)(stars_table_filled, survey=mergedData.survey, coord_cho
 SearchRegion.data_dict['stellar catalog'] = stars
 SearchRegion.data = stars
 print('Stellar catalog made, ', len(stars.data), ' stars found')
+
 
 ## Some S-G validation plots - NEEDS TO BE UPDATED
 """
@@ -153,18 +154,8 @@ for distance in distance_array:
 
     ## need fracdet eventually, but not prioritizing for now
     
-    results, hist = search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, verbose = False)
-                                                        #survey isn't actually used in this function it seems? so just putting in a str...?
-
-    #plot histogram - pulled bins stuff from the find_peaks function
-    fig, ax = plt.subplots(1,2, figsize=(10,5))
-    delta_x = 0.01
-    area = delta_x**2
-    smoothing = 2. / 60. # Was 3 arcmin
-    bins = np.arange(-8., 8. + 1.e-10, delta_x)
-    im = ax[0].imshow(hist.T, extent=[bins[0], bins[-1], bins[0], bins[-1]], origin='lower')
-    ax[0].set(xlim = (-1, 1), ylim = (-1, 1))
-    #plt.colorbar(im, ax=ax[0])
+    results, hist = search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, 
+                                                    verbose = False, plot = False) 
     
     one_peak_per_row = results.T
     peak_number = np.shape(one_peak_per_row)[0]
@@ -174,14 +165,6 @@ for distance in distance_array:
         #ra_peak, dec_peak, r_peak, sig_peak, distance_modulus, n_obs_peak, n_obs_half_peak, n_model_peak = results_transpose[i]
         Peak_i = DataObjects.Peak(one_peak_per_row[i], iso_stars, iso, SearchRegion)
         Peaks.append(Peak_i)
-        #plot Peak_i on the histogram
-        radius = Annulus((Peak_i.ra, Peak_i.dec), Peak_i.r, 0.0002, color='r')
-        ax[1].add_artist(radius)
-        ax[1].scatter(Peak_i.ra, Peak_i.dec, s=5, c='r')
-        
-    #save plot
-    plt.savefig(plots_dir + f'/{opt_survey}_{ir_survey}_nside{SearchRegion.nside}_pixel{SearchRegion.pixel}/{distance}kpc_region_histogram.png')
-    plt.close()
         
 if len(Peaks)==0:
     print('No significant hotspots found.')
@@ -196,7 +179,6 @@ utils.write_peak_result(Peaks, results_dir+f'/BEFOREsimple_{SearchRegion.nside}_
 
 
 fig, ax = plt.subplots(1,2, figsize=(10,5))
-
 overlaps = []
 for i in range(len(Peaks)):
     radius = Annulus((Peaks[i].ra, Peaks[i].dec), Peaks[i].r, 0.0002, color='r')
@@ -211,33 +193,17 @@ for i in range(len(Peaks)):
 for pair in overlaps:
     more_sig = pair[0] #because in the pair, i always comes first. i < j and this list is sorted by significance
     less_sig = pair[1]
+    if more_sig.sig==less_sig.sig: #I don't know what to do if they have the same significance yet, this should save both
+        more_sig.distances.append(less_sig.distance)
     try:
         del Peaks[Peaks.index(less_sig)] #this (hopefully) works because they're all different objects 
                                 #therefore none are exactly alike and they won't be deleted 2x
+    #    print('successfully deleted above')
     except:
         continue
+# as far as I can tell the above code works for duplicates (commented out code is for debugging)
 
-# old code
-'''
-moresig_Peaks = []
-for i in range(len(Peaks)):
-    overlaps = []
-    for j in range(len(Peaks)):
-        if i==j:
-            continue
-        else:
-            angsep = projector.angsep(Peaks[i].ra, Peaks[i].dec, Peaks[j].ra, Peaks[j].dec)
-            if angsep<Peaks[i].r:
-                overlaps.append(Peaks[j])
-    try:
-        mostsig_Peak_i = max(overlaps, key=lambda x: x.sig)
-        moresig_Peaks.append(mostsig_Peak_i)
-    except:
-        moresig_Peaks.append(Peaks[i])
-#in case of duplicates (probably could make this logic better)
-Peaks = list(set(moresig_Peaks))
-print('Number of peaks after: ', len(Peaks))      
-'''
+print('Number of peaks after: ', len(Peaks))
 
 for Peak in Peaks:
     radius = Annulus((Peak.ra, Peak.dec), Peak.r, 0.0002, color='r')
@@ -251,14 +217,14 @@ plt.close()
 
 final_Peaks = []
 for Peak in Peaks:
-    print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
+    print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distances} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
     
     stars_within_radius = Peak.stars_within_the_radius(scale=1.2, set_attr = True)
     iso_background_stars = Peak.stars_within_the_radius(starsData=Peak.iso_stars, r=0.1, set_attr = False)
     all_background_stars = Peak.stars_within_the_radius(starsData=stars, r=0.1, set_attr = False)
     Peak.diagnostic_plots(iso_background_stars, all_background_stars,
                           plots_dir, data_dir, 
-                          preload=False, save=True, cutouts=True)  
+                          preload=True, save=True, cutouts=False)  
     
     if len(stars_within_radius.data)<=1:
         if type(stars_within_radius)==DataObjects.Data:
