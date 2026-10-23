@@ -1,18 +1,19 @@
 setup : #user input
-  where : 'nersc' #usdf or nersc
-  home_dir : #path where I want everything to save
+  where : 'rsp' #usdf or nersc
+  home_dir :  #path where I want everything to save
     nersc : '$HOME/ufd_alfred'
     usdf : '$HOME/rubin-user/ufd_alfred'
+    rsp : '$HOME/ufd_alfred'
   pckg_dir : 'alfred' #path to the package
   data_dir : 'external_data' #path to the external data needed (maps, euclid data, etc)
 output:
   results_dir : 'results'
   plots_dir : 'plots'
 
-nside : 64
+nside : 256
 
 #change with new data releases
-opt_survey : 'des_y6' #or 'lsst_dp1', 'lsst_dp2', or 'des_y6'
+opt_survey : 'lsst_dp2' #or 'lsst_dp1', 'lsst_dp2', or 'des_y6'
 ir_survey : 'euclid_q1' #or 'euclid dr1' or eventually 'roman'
 
 lsst_dp1:
@@ -63,12 +64,14 @@ lsst_dp2:
     repo_config :
         nersc : 'dp2'
         usdf : 'dp2_prep'
+        rsp : 'dp2'
     collection :
         nersc : 'dp2'
         usdf : ['LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage1',
                 'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage2',
                 'LSSTCam/runs/DRP/DP2/v30_0_6_rc1/DM-53881/stage3',
                 'LSSTCam/runs/DRP/DP2/v30_0_0/DM-53881/stage4']
+        rsp : 'dp2'
     instrument : 'LSSTCam'
     skymap : 'lsst_cells_v2'
     #tract_list :

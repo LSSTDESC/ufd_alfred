@@ -214,8 +214,8 @@ class Region():
             #query += f''' WHERE CONTAINS(POINT('ICRS', RIGHT_ASCENSION, DECLINATION),
             #             POLYGON('ICRS', {self.region_borders(return_type='string',step=step)})) = 1'''
             ra_arr, dec_arr = self.region_borders(return_type='coord-separated list',step=step,buffer=buffer)
-            query += f''' WHERE ra BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
-                        AND dec BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
+            query += f''' WHERE right_ascension BETWEEN {np.min(ra_arr)} AND {np.max(ra_arr)}
+                        AND declination BETWEEN {np.min(dec_arr)} AND {np.max(dec_arr)}'''
     
             results_table = Euclid.launch_job_async(query, verbose=False).get_results()
             results_table.write(file_dir, format='parquet', overwrite = True)

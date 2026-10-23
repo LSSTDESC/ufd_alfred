@@ -592,8 +592,7 @@ def match_validation_plots(match1Band, unmatch1Band, full1Band,
 
 
 #~~~~~~~~~~START COLOR-MAG FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def color_magnitude(band1_mag, band1_str,
-                    band2_mag, band2_str,
+def color_magnitude(band1, band2, #mag defined in dataobjects file
                     color_data, title,
                     color_label = '', selection_label = '_nolegend',
                     colors = 'viridis',
@@ -601,6 +600,7 @@ def color_magnitude(band1_mag, band1_str,
                     colorbar_limits = (0,1),
                     x_lim = (-1, 4), y_lim = (30, 18),
                     save = False, filename = None):
+    
     """
     Plots color-magnitude diagram, band1 vs band1-band2
 
@@ -653,45 +653,48 @@ def color_magnitude(band1_mag, band1_str,
     if ax == None: #to allow me to have this as a subplot
         fig, axes = plt.subplots(1,1, figsize=(7,5))
         ax = axes
-
+  
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
         if histogram == True:
             if color_data is None:
-                ax.hist2d(band1_mag - band2_mag, band1_mag, bins=200,
+                ax.hist2d(band1.mag - band2.mag, band1.mag, bins=200,
                           range = [[x_lim[0],x_lim[1]],[y_lim[1], y_lim[0]]],
                           cmin=1, cmap = colors, label = selection_label, )
             else:
-                _ = ax.scatter(band1_mag - band2_mag, band1_mag, s = size,
+                _ = ax.scatter(band1.mag - band2.mag, band1.mag, s = size,
                                cmap = colors, c = color_data,
                                vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                                label = selection_label)
-                x = band1_mag - band2_mag
-                y = band1_mag
+                x = band1.mag - band2.mag
+                y = band1.mag
                 sns.kdeplot(x=x, y=y, fill=False, color="k")
         else:
-            _ = ax.scatter(band1_mag - band2_mag, band1_mag, s = size,
+            _ = ax.scatter(band1.mag - band2.mag, band1.mag, s = size,
                            cmap = colors, c = color_data,
                            vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                            label = selection_label)
+        
 
         ax.set_title(title, pad=pad)
-        ax.set(xlabel = f"{band1_str} - {band2_str}", ylabel = f"{band1_str}", xlim = x_lim, ylim = y_lim)
+        ax.set(xlabel = f"{band1.str} - {band2.str}", ylabel = f"{band1.str}", xlim = x_lim, ylim = y_lim)
         # cleaning up, not displaying everything if not needed
         if selection_label[0] != '_':
             ax.legend()
         if color_label is not None:
             plt.colorbar(_,label=color_label)
         plt.tight_layout()
-
+        
         if save == True:
             if not os.path.exists(plots_dir + f'/colormag'):
                 os.mkdir(plots_dir + f'/colormag')
             if filename is None:
                 filename = title.replace(' ', '').replace('-', '_').lower()
             plt.savefig(plots_dir + f'/colormag/{filename}.png')
+        plt.show() #uncomment to quickly see CMD without making a dir
         plt.close()
+        
 
 #~~~~~~~~~~START COLOR-COLOR FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def color_color(band_list,
@@ -748,13 +751,14 @@ def color_color(band_list,
         fig, axes = plt.subplots(1,1, figsize=(7,6))
         ax = axes
 
-    band_x1, band_x2, band_y1, band_y2 = band_list
+   
+    band1_x, band2_x, band1_y, band2_y = band_list
     #cleaning out nans because the hist2d doesn't like them
-    nanmask = (~np.isnan(band_x1[1])) & (~np.isnan(band_x2[1])) & (~np.isnan(band_y1[1])) & (~np.isnan(band_y2[1]))
-    x1_mag = band_x1[1][nanmask]
-    x2_mag = band_x2[1][nanmask]
-    y1_mag = band_y1[1][nanmask]
-    y2_mag = band_y2[1][nanmask]
+    nanmask = (~np.isnan(band1_x[1])) & (~np.isnan(band2_x[1])) & (~np.isnan(band1_y[1])) & (~np.isnan(band2_y[1]))
+    x1_mag = band1_x.mag[1][nanmask]
+    x2_mag = band2_x.mag[1][nanmask]
+    y1_mag = band1_y.mag[1][nanmask]
+    y2_mag = band2_y.mag[1][nanmask]
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
