@@ -112,12 +112,12 @@ SearchRegion.data_dict['stellar catalog'] = stars
 SearchRegion.data = stars
 print('Stellar catalog made')
 
-## Some S-G validation plots - NEEDS TO BE UPDATED
-#This is updated cmd function, has yet to be run on real data
+
 #from alfred.DataObjects import Data
 datafile = 'ufd_alfred/external_data/merged/32_9043_lsst_dp2_euclid_q1_merged.parquet'
 #from alfred.DataObjects import Band
 #from alfred.DataObjects import LSSTData
+#calling updated cmd plot
 cmddata = stars
 band1 = cmddata.g
 band2 = cmddata.r 
@@ -131,6 +131,20 @@ plotting_functions.color_magnitude(band1, band2, #mag defined in dataobjects fil
                     x_lim = (-1, 4), y_lim = (30, 18),
                     save = True, filename = None)
 print(len(stars.data))
+#calling updated color color plot
+color_color=stars
+color_data=color_color.g, color_color.r, color_color.i, color_color.z
+bandlist = color_color.g, color_color.r, color_color.i, color_color.z
+plotting_functions.color_color(bandlist, None, 'Color Color', save = True)
+
+#calling updated galaxy sep plot
+sepData = stars
+xax = sepData.i
+yax_sep = sepData.mumax_minus_mag
+#y_label = stars.str
+
+plotting_functions.star_gal_sep(xax, yax_sep, None, 'Galaxy Sep', save = True)
+
 # plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
 #                                    'c',
 #                                    f'''g vs g-r of {stars.lsst_survey} and {stars.euclid_survey} stars 
@@ -138,6 +152,7 @@ print(len(stars.data))
 #                                    histogram = False,
 #                                    selection_label = 'Zerjal morphology + colorcolor cut',
 #                                    save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+
 # plotting_functions.color_color([('g', stars.g_mag),('r', stars.r_mag),('r', stars.r_mag),('i', stars.i_mag)],
 #                                None, 
 #                                f'''g-r vs r-i of {stars.lsst_survey} and {stars.euclid_survey} stars in tract

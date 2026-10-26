@@ -595,13 +595,18 @@ def color_color(band_list,
         ax = axes
 
    
-    band1_x, band2_x, band1_y, band2_y = band_list
+    [band1_x, band2_x, band1_y, band2_y] = band_list
     #cleaning out nans because the hist2d doesn't like them
-    nanmask = (~np.isnan(band1_x[1])) & (~np.isnan(band2_x[1])) & (~np.isnan(band1_y[1])) & (~np.isnan(band2_y[1]))
+    nanmask = (~np.isnan(band1_x.mag[1])) & (~np.isnan(band2_x.mag[1])) & (~np.isnan(band1_y.mag[1])) & (~np.isnan(band2_y.mag[1]))
     x1_mag = band1_x.mag[1][nanmask]
     x2_mag = band2_x.mag[1][nanmask]
     y1_mag = band1_y.mag[1][nanmask]
     y2_mag = band2_y.mag[1][nanmask]
+    print('x1 mag is', x1_mag)
+    print('x2 mag is', x2_mag)
+    print('y1 mag is', y1_mag)
+    print('y2 mag is', y2_mag)
+
     with warnings.catch_warnings():
         warnings.filterwarnings("ignore", message='.*colormapping.*')
         warnings.filterwarnings("ignore", message='.*labels.*')
@@ -625,8 +630,7 @@ def color_color(band_list,
                            s = size, cmap = colors)
 
         ax.set_title(title, pad=pad)
-        ax.set(ylabel = f'{band_y1[0]} - {band_y2[0]}',
-               xlabel = f'{band_x1[0]} - {band_x2[0]}')
+        ax.set(ylabel = f'{band1_y.str} - {band2_y.str}', xlabel = f'{band1_x.str} - {band2_x.str}')
         # cleaning up the place, not displayin/changing everything if not needed
         if selection_label[0] != '_':
             ax.legend()
@@ -647,9 +651,9 @@ def color_color(band_list,
             plt.savefig(plots_dir + f'/colorcolor/{filename}.png')
 
 #~~~~~~~~~~START STAR-GAL MORPHOLOGY FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def star_gal_sep(xax_mag, yax_sep, y_label,
+def star_gal_sep(xax, yax_sep, #y_label,
                  color_data, title, 
-                 colors = 'viridis_r', x_label = 'LSST i mag', 
+                 colors = 'viridis_r', #x_label = 'LSST i mag', 
                  selection_label = '_nolegend', color_label = None,
                  histogram = False, ax = None, line_plt = None,
                  colorbar_limits = (0,1), y_lim = None, x_lim = (18,28),
@@ -718,24 +722,24 @@ def star_gal_sep(xax_mag, yax_sep, y_label,
         if histogram == True:
             # 2D histograms require colormap which is str type
             if color_data is None:
-                ax.hist2d(xax_mag, yax_sep, bins=200,
+                ax.hist2d(xax.mag, yax_sep, bins=200,
                           range = [[x_lim[0],x_lim[1]],[y_lim[0], y_lim[1]]],
                           cmin=1, cmap = colors, label = selection_label)
             # otherwise if color dimension is needed for data, it'll plot contours over scatter
             else:
-                _ = ax.scatter(xax_mag, yax_sep,
+                _ = ax.scatter(xax.mag, yax_sep,
                                c = color_data, vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                                label = selection_label,
                                s = size, cmap = colors)
                 sns.kdeplot(x=xax_mag, y=yax_sep, fill=False, color="k")
         # normal scatter plot
         else:
-            _ = ax.scatter(xax_mag, yax_sep,
+            _ = ax.scatter(xax.mag, yax_sep,
                            c = color_data, vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                            label = selection_label,
                            s = size, cmap = colors)
 
-        ax.set(xlabel = x_label, ylabel = y_label, xlim = x_lim)
+        ax.set(xlabel = f'{xax.str}', ylabel = 'Sep', xlim = x_lim)
         ax.set_title(title, pad=pad) #title is separate so I can have the pad
         # cleaning up the place, not displaying everything if not needed
         if y_lim is not None:
