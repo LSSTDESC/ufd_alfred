@@ -7,12 +7,13 @@ from astropy import units as u
 import numpy as np
 import gc
 import scipy
+import matplotlib.pyplot as plt
 
 from alfred import utils, DataObjects
 
-from astroquery_updated.esa.euclid import Euclid
-#I really need to fix this, maybe github submodules or enforcing a version of astroquery
-#I think it's version 0.4.11 or 10?
+#I really need to fix that I'm importing a git repo of updated astroquery
+    #maybe github submodules or enforcing a version of astroquery
+    #I think it's version 0.4.11 or 10?
 #from astroquery_updated.utils.tap import TapPlus
 from pyvo.dal.tap import TAPService
 from ugali.utils import healpix
@@ -27,9 +28,13 @@ with open('config.yaml', 'r') as ymlfile:
         skymap = cfg[opt_survey]['skymap']
         repo_config = cfg[opt_survey]['repo_config'][where]
         collection = cfg[opt_survey]['collection'][where]
-    data_dir = os.path.join(os.path.expandvars(cfg['setup']['home_dir'][where]), cfg['setup']['data_dir'])
+    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
+    data_dir = os.path.join(home_dir, cfg['setup']['data_dir'])
     if not os.path.exists(data_dir):
         os.mkdir(data_dir)
+    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
+    if not os.path.exists(plots_dir):
+        os.mkdir(plots_dir)
 
 class Region():
     #for sharding data into large healpy pixel regions
@@ -206,7 +211,9 @@ class Region():
         else:
             print(f'''Check tells me Euclid data doesn't exist for nside = {nside_datashard}, pixel = {pixel_datashard} 
                       or you do want to overwrite, querying now''')
-    
+            from astroquery_updated.esa.euclid import Euclid
+            Euclid.get_status_messages()
+            
             query = f'SELECT {INCOLS} FROM mer_catalogue'
             radius = 1.7 #going for bigger than a tract
             #query += f''' WHERE DISTANCE({self.center.ra.value}, {self.center.dec.value},
@@ -408,47 +415,51 @@ class Region():
     
         return(characteristic_density_local)
 
-    def find_peaks(self, iso_sel):
+    def find_peaks(self, iso_sel, distance_modulus, survey, plot=False):
         """
         Convolve field to find characteristic density and peaks within the selected pixel
         """
 
         #characteristic_density = self.characteristic_density(iso_sel)
         characteristic_density = self.density
-    
+
         x, y = self.proj.sphereToImage(self.data.basis1[iso_sel], self.data.basis2[iso_sel]) # Trimmed magnitude range for hotspot finding
         #x, y = self.proj.sphereToImage(self.data[self.survey.catalog['basis_1']], self.data[self.survey.catalog['basis_2']]) # If we want to use full magnitude range for significance evaluation
         delta_x = 0.01
         area = delta_x**2
-        smoothing = 2. / 60. # Was 3 arcmin
+        distance = projector.distanceModulusToDistance(distance_modulus) #kpc
+            #100 pc radius typical size -> 0.1 kpc*2
+        smoothing = 1./60. #originally 2. arcmin / 60. (converting to deg)
         bins = np.arange(-8., 8. + 1.e-10, delta_x)
         #bins = np.arange(-4., 4. + 1.e-10, delta_x) # SM: not sure what to prefer here...
         centers = 0.5 * (bins[0: -1] + bins[1:])
         yy, xx = np.meshgrid(centers, centers)
-    
+
         h = np.histogram2d(x, y, bins=[bins, bins])[0]
-        
+
         h_g = scipy.ndimage.filters.gaussian_filter(h, smoothing / delta_x)
-    
+
         # SM: If we can speed up this block that would be great
-        factor_array = np.arange(1., 5., 0.05)
+        factor_array = np.arange(1, 5., 0.05)
         rara, decdec = self.proj.imageToSphere(xx.flatten(), yy.flatten())
         cutcut = (hp.ang2pix(self.nside, rara, decdec, lonlat=True) == self.pix_center).reshape(xx.shape)
         threshold_density = 5 * characteristic_density * area
+        h_region_l = []
         for factor in factor_array:
             # This is reducing the contrast against the background through the arbitrary measurement 'factor'
             # until there are fewer than 10 disconnected peaks
             h_region, n_region = scipy.ndimage.measurements.label((h_g * cutcut) > (area * characteristic_density * factor))
+            h_region_l.append(h_region)
             if n_region < 10:
                 threshold_density = area * characteristic_density * factor
                 break
-    
+
         h_region, n_region = scipy.ndimage.measurements.label((h_g * cutcut) > threshold_density)
-    
+
         x_peak_array = []
         y_peak_array = []
         angsep_peak_array = []
-    
+
         for index in range(1, n_region + 1): # loop over peaks
             index_peak = np.ravel_multi_index(scipy.ndimage.maximum_position(input=h_g, labels=h_region, index=index), h_g.shape)
             x_peak, y_peak = xx.flatten()[index_peak], yy.flatten()[index_peak]
@@ -465,13 +476,37 @@ class Region():
             x_peak_array.append(x_peak)
             y_peak_array.append(y_peak)
             angsep_peak_array.append(angsep_peak)
+
+        if plot==True:
+            #print(np.shape(h_region), type(h_region[0][0]), h_region[0][0])
+            fig, ax = plt.subplots(1,4, figsize=(20,5))
+            #numpy documentation tells me to transpose it
+            ax[0].imshow(h.T, extent=[bins[0], bins[-1], bins[0], bins[-1]], origin='lower')
+            ax[1].imshow(h_g.T, extent=[bins[0], bins[-1], bins[0], bins[-1]], origin='lower')
+            ax[2].imshow(h_region.T, extent=[bins[0], bins[-1], bins[0], bins[-1]], origin='lower')
+            ax[3].imshow(h_region_l[0].T, extent=[bins[0], bins[-1], bins[0], bins[-1]], origin='lower')
+            ax[0].set(xlim = (-.8, .8), ylim = (-.8, .8), title=f'Histogram')
+            ax[1].set(xlim = (-.8, .8), ylim = (-.8, .8), title=f'Gaussian filter, {smoothing} deg smooth')
+            ax[2].set(xlim = (-.8, .8), ylim = (-.8, .8), title=f'h region after loop')
+            ax[3].set(xlim = (-.8, .8), ylim = (-.8, .8), title=f'h region before loop')
+            fig.suptitle(f'{distance} kpc')
+            for xy in zip(x_peak_array, y_peak_array):
+                x, y = xy
+                ax[0].scatter(x, y, marker = 'x', s = 10, label=f'{self.proj.imageToSphere(x, y)}')
+                ax[1].scatter(x, y, marker = 'x', s = 10, label=f'{self.proj.imageToSphere(x, y)}')
+                ax[2].scatter(x, y, marker = 'x', s = 10, label=f'{self.proj.imageToSphere(x, y)}')
+                ax[3].scatter(x, y, marker = 'x', s = 10, label=f'{self.proj.imageToSphere(x, y)}')
+            ax[1].legend(bbox_to_anchor=(0.5,1.5))
+            fig.savefig(plots_dir + f'/{survey}_nside{self.nside}_pixel{self.pixel}/{round(distance)}kpc_region_histogram.png', bbox_inches='tight')
+            plt.close()
         
-        return x_peak_array, y_peak_array, angsep_peak_array
+        return x_peak_array, y_peak_array, angsep_peak_array, h_g
     
-    def fit_aperture(self, iso_sel, x_peak, y_peak, angsep_peak, verbose=True, extension=None):
+    def fit_aperture(self, iso_sel, x_peak, y_peak, angsep_peak, distance_modulus, survey, verbose=True, plot=False,extension=None):
         """
-        Fit aperture by varing radius and computing the significance
+        Fit aperture by varying radius and computing the significance
         """
+        dist = projector.distanceModulusToDistance(distance_modulus)
 
         characteristic_density_local = self.characteristic_density_local(iso_sel, x_peak, y_peak, angsep_peak, verbose=verbose)
     
@@ -496,15 +531,38 @@ class Region():
 
         n_obs_array = np.array([np.sum(angsep_peak < size) for size in size_array])
         n_model_array = np.array([characteristic_density_local * (np.pi * size**2) for size in size_array])
-
+        
         sig_array = np.array([np.clip(scipy.stats.norm.isf(scipy.stats.poisson.sf(n_obs, n_model)), 0., 37.5) for (n_obs,n_model) in zip(n_obs_array,n_model_array)])
+        sig_array = np.where(n_obs_array==0, 0 ,sig_array)
     
         ra_peak, dec_peak = self.proj.imageToSphere(x_peak, y_peak)
+        
         index_peak = np.argmax(sig_array)
         r_peak = size_array[index_peak]
         n_obs_peak = n_obs_array[index_peak]
         n_model_peak = n_model_array[index_peak]
         n_obs_half_peak = np.sum(angsep_peak < (0.5 * r_peak))
+        
+        if plot==True:
+            fig, ax = plt.subplots(1,2, figsize=(15,5))
+            ax[0].plot(size_array, n_obs_array, label='N Observed')
+            ax[0].plot(size_array, n_model_array, label='N Model = local density*(pi*r^2)')
+            ax[0].scatter(r_peak, n_obs_peak, label='n obs peak v r peak', c='k',marker='o')
+            ax[0].scatter(r_peak, n_model_peak, label='n model peak v r peak', c='k',marker='x')
+            ax[0].set(xlabel='r [deg]', ylabel='number of stars')
+            ax[1].plot(size_array, n_obs_array, label='N Observed')
+            ax[1].plot(size_array, n_model_array, label='N Model = local density*(pi*r^2)')
+            ax[1].scatter(r_peak, n_obs_peak, label='n obs peak v r peak', c='k',marker='o')
+            ax[1].scatter(r_peak, n_model_peak, label='n model peak v r peak', c='k',marker='x')
+            ax[1].set(xlim=(r_peak-0.001,r_peak+0.001), ylim=(n_model_peak-1,n_obs_peak+1),
+                      xlabel='r [deg]', ylabel='number of stars',
+                      title=f'n obs: {n_obs_array} \n n mod: {n_model_array} \n sig: {sig_array}')
+            ax[0].legend()
+            ax[1].legend()
+            peak_id = f'{round(sig_array[index_peak],5)}_{round(ra_peak,5)}_{round(dec_peak,5)}_{int(dist)}'
+            fig.savefig(plots_dir + f'/{survey}_nside{self.nside}_pixel{self.pixel}/aperture_{peak_id}.png',
+                        bbox_inches='tight')
+            plt.close()
     
         # Compile results
         if verbose: print('Candidate: x_peak: {:12.3f}, y_peak: {:12.3f}, r_peak: {:12.3f}, sig: {:12.3f}, ra_peak: {:12.3f}, dec_peak: {:12.3f}'.format(x_peak, y_peak, r_peak, np.max(sig_array), ra_peak, dec_peak))

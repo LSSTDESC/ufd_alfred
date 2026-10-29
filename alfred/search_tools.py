@@ -7,21 +7,6 @@ import scipy
 import yaml
 import os
 
-with open('config.yaml', 'r') as ymlfile:
-    cfg = yaml.load(ymlfile, Loader=yaml.SafeLoader)
-    #assuming that it's cool that the whole github repo is considered "home"
-    where = cfg['setup']['where']
-    home_dir = os.path.expandvars(cfg['setup']['home_dir'][where])
-    pckg_dir = os.path.join(home_dir, cfg['setup']['pckg_dir'])
-    #external data is gonna be in a directory above - subject to change
-    data_dir = os.path.expandvars(cfg['setup']['data_dir'])
-    plots_dir = os.path.join(home_dir, cfg['output']['plots_dir'])
-    if not os.path.exists(plots_dir+'/isochrones'):
-        os.mkdir(plots_dir+'/isochrones')
-    results_dir = os.path.join(home_dir, cfg['output']['results_dir'])
-    if not os.path.exists(results_dir):
-        os.mkdir(results_dir)
-
 
 def isochrone_search(band1, band2, distance_modulus, starData, SearchRegion, age=12.0, Z=0.0002, mag_max=26, save_graph=True):
     #the isochrone with Euclid, Roman, and LSST bands is 'mixed'
@@ -108,7 +93,7 @@ def cut_isochrone_path(g, r, g_err, r_err, isochrone, radius=0.01, mag_max = 26,
     else:
         return cut
 
-def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None, verbose=True):
+def search_by_distance(survey, Region, distance_modulus, iso_sel, extension=None, verbose=True, plot=False):
     #credit to the authors of simple_adl
         #I had to copy/paste to avoid things in their package overriding my config file variables
         #and I had to adjust one thing to get it working with my Region object
@@ -121,7 +106,7 @@ def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None
     in depth. Then compute the local field density using a small annulus 
     around each individual hotspot, e.g., radius 0.3 to 0.5 deg.
     """
-    if (len(region.data.data[iso_sel]) == 0):
+    if (len(Region.data.data[iso_sel]) == 0):
         return [], [], [], [], [], [], [], []
 
     ra_peak_array = []
@@ -133,12 +118,12 @@ def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None
     n_obs_half_peak_array = []
     n_model_peak_array = []
 
-    region.density = region.characteristic_density(iso_sel, verbose=verbose)
-    x_peak_array, y_peak_array, angsep_peak_array = region.find_peaks(iso_sel)
+    Region.density = Region.characteristic_density(iso_sel, verbose=verbose)
+    x_peak_array, y_peak_array, angsep_peak_array, hist = Region.find_peaks(iso_sel, distance_modulus, survey, plot=plot)
     for x_peak, y_peak, angsep_peak in zip(x_peak_array, y_peak_array, angsep_peak_array):
         # Aperture fitting
         if verbose: print('Fitting aperture to hotspot...')
-        ra_peaks, dec_peaks, r_peaks, sig_peaks, n_obs_peaks, n_obs_half_peaks, n_model_peaks, density = region.fit_aperture(iso_sel, x_peak, y_peak, angsep_peak, verbose=verbose, extension=extension)
+        ra_peaks, dec_peaks, r_peaks, sig_peaks, n_obs_peaks, n_obs_half_peaks, n_model_peaks, density = Region.fit_aperture(iso_sel, x_peak, y_peak, angsep_peak, distance_modulus, survey, verbose=verbose, extension=extension, plot=plot)
         
         ra_peak_array.append(ra_peaks)
         dec_peak_array.append(dec_peaks)
@@ -161,4 +146,6 @@ def search_by_distance(survey, region, distance_modulus, iso_sel, extension=None
     except ValueError:
         print('No arrays to concatenate')
 
-    return ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array
+    #added this line and changed return statement to return h_region
+    results = np.asarray([ra_peak_array, dec_peak_array, r_peak_array, sig_peak_array, distance_modulus_array, n_obs_peak_array, n_obs_half_peak_array, n_model_peak_array])
+    return results, hist

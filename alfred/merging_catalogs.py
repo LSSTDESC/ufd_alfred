@@ -86,7 +86,6 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
         merged_table.write(file_path, format='parquet', overwrite = True)
         print(f'New merged catalog data written to {file_path}')
 
-    print('Starting the silly if statement logic')
     # I don't know how else to do this logic 
     if 'euclid' in PrimaryData.survey or 'euclid' in SecondaryData.survey:
         if 'lsst' in PrimaryData.survey or 'lsst' in SecondaryData.survey:
@@ -144,7 +143,7 @@ def merge_catalogs(PrimaryData, SecondaryData, SearchRegion, preload = True, val
             mergedData = SearchRegion.region_cut(mergedData, finer_nside = 4096)
             
     # then more if statements for the other surveys...
-    print('End silly little if statement logic')
+
     del merged_table, PrimaryData, SecondaryData
     gc.collect()
 
