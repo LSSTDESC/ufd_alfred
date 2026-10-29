@@ -111,37 +111,47 @@ SearchRegion.data = stars
 print('Stellar catalog made, ', len(stars.data), ' stars found')
 
 
-## Some S-G validation plots - NEEDS TO BE UPDATED
-"""
-plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
-                                   'c',
-                                   f'''g vs g-r of {stars.lsst_survey} and {stars.euclid_survey} stars 
-                                   in tract {stars.tract}''',
-                                   histogram = False,
-                                   selection_label = 'Zerjal morphology + colorcolor cut',
-                                   save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
-plotting_functions.color_color([('g', stars.g_mag),('r', stars.r_mag),('r', stars.r_mag),('i', stars.i_mag)],
-                               None, 
-                               f'''g-r vs r-i of {stars.lsst_survey} and {stars.euclid_survey} stars in tract
-                               {stars.tract}''',
-                               histogram = True, 
-                               x_lim = (0,2), y_lim = (-1,2),
-                               selection_label = 'Zerjal morphology + colorcolor cut',
-                               save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
-plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 'Euclid mumax_minus_mag',
-                                merged_data.pointlikeprob, 
-                                f'''morphology separation of of {stars.lsst_survey} and {stars.euclid_survey} stars
-                                in tract {stars.tract}''', 
-                                histogram = True,
-                                save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
-print('S-G plots ran and saved')
-"""
-
+## S-G validation plots
+#This is updated cmd function, has yet to be run on real data
+cmddata = stars
+band1 = cmddata.g
+band2 = cmddata.r 
+color_data = colorcolor_mask
+plotting_functions.color_magnitude(band1, band2, #mag defined in dataobjects file
+                    None, 'DES cmd',
+                    # color_label = '', selection_label = '_nolegend',
+                    # colors = 'viridis',
+                    histogram = False, ax = None,
+                    colorbar_limits = (0,1),
+                    x_lim = (-1, 4), y_lim = (30, 18),
+                    save = True, filename = None)
+# plotting_functions.color_magnitude(stars.g_mag, 'g', stars.r_mag, 'r', 
+#                                    'c',
+#                                    f'''g vs g-r of {stars.lsst_survey} and {stars.euclid_survey} stars 
+#                                    in tract {stars.tract}''',
+#                                    histogram = False,
+#                                    selection_label = 'Zerjal morphology + colorcolor cut',
+#                                    save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+# plotting_functions.color_color([('g', stars.g_mag),('r', stars.r_mag),('r', stars.r_mag),('i', stars.i_mag)],
+#                                None, 
+#                                f'''g-r vs r-i of {stars.lsst_survey} and {stars.euclid_survey} stars in tract
+#                                {stars.tract}''',
+#                                histogram = True, 
+#                                x_lim = (0,2), y_lim = (-1,2),
+#                                selection_label = 'Zerjal morphology + colorcolor cut',
+#                                save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+# plotting_functions.star_gal_sep(merged_data.i_mag, merged_data.mumax_minus_mag, 'Euclid mumax_minus_mag',
+#                                 merged_data.pointlikeprob, 
+#                                 f'''morphology separation of of {stars.lsst_survey} and {stars.euclid_survey} stars
+#                                 in tract {stars.tract}''', 
+#                                 histogram = True,
+#                                 save = True, filename = f'{stars.tract}_{stars.lsst_survey}_{stars.euclid_survey}')
+# print('S-G plots ran and saved')
 
 ## hotspot search
-distance_array = np.arange(50,1000,50) #distance is given in kpc
+# distance_array = np.arange(50,1000,50) #distance is given in kpc
 
-Peaks = []
+# Peaks = []
 
 for distance in distance_array:
     print(f'Searching at {distance} kpc')
@@ -152,7 +162,7 @@ for distance in distance_array:
                                                        age=12.0, Z=0.0002, 
                                                        save_graph=False)
 
-    ## need fracdet eventually, but not prioritizing for now
+#     ## need fracdet eventually, but not prioritizing for now
     
     results, hist = search_tools.search_by_distance(stars.survey, SearchRegion, distance_modulus, iso_sel, 
                                                     verbose = False, plot = False) 
