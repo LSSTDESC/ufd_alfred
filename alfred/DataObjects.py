@@ -240,11 +240,10 @@ class Peak():
         self.sig = results_T[3]
         self.distance_modulus = results_T[4]
         self.distance = projector.distanceModulusToDistance(results_T[4])
-        self.distances = [self.distance]
+        self.samesig_duplicates = []
         self.n_obs = results_T[5]
         self.n_obs_half = results_T[6]
         self.n_model = results_T[7]
-        self.overlapping_peaks = []
         try:
             self.id = f'{round(self.sig,5)}_{round(self.ra,5)}_{round(self.dec,5)}_{int(self.distance)}'
         except:
@@ -331,31 +330,34 @@ class Peak():
             euclid_pixel_dir = data_dir + '/' + euclid_name + f'/nside{self.region.nside}_pixel{self.region.pixel}'
             if not os.path.exists(euclid_pixel_dir):
                 os.mkdir(euclid_pixel_dir)
-            euclid_file = euclid_pixel_dir + f'/{self.id}'
             try:
                 des_name = parts[parts.index('des')] + ' ' + parts[parts.index('des')+1]
             except:
                 des_name = 'des_unknown'
             
-            cutout_radius_deg = 0.07
+            cutout_radius_deg = 0.05
             cutout_radius_arcsec = cutout_radius_deg*3600 #r in deg, convert to arcsec
-            
-            if utils.check_if_query(euclid_file, preload):
-                print('Check tells me to download Euclid image')
-            # this cutout radius is in arcsec
-                try:
-                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 
-                                                        cutout_radius = cutout_radius_arcsec)
+            euclid_file_base = euclid_pixel_dir + f'/{self.ra}_{self.dec}'
+
+            cutout_radii = [cutout_radius_arcsec, 120, 60] # this cutout radius is in arcsec
+            for r in cutout_radii:
+                euclid_file = euclid_file_base + f'_{r}arcsec'
+                if utils.check_if_query(euclid_file, preload)==True:
+                    print(f'Check tells me to download Euclid image for {r}arcsec')
+                    try:
+                        plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, 
+                                                            cutout_radius = r)
+                        plotting_functions.plotCutout(euclid_file, euclid_name.replace('_',' ').upper(), self,
+                                              legend=False,subplot=spec[1,0],fig=fig)
+                        break
+                    except:
+                        continue
+                    
+                else:
+                    print(f'Check tells me to NOT download Euclid image for {r}arcsec')
                     plotting_functions.plotCutout(euclid_file, euclid_name.replace('_',' ').upper(), self,
-                                          legend=False,subplot=spec[1,0],fig=fig)
-                except:
-                    plotting_functions.saveEuclidCutout(euclid_file, self.ra, self.dec, cutout_radius = 120)
-                    plotting_functions.plotCutout(euclid_file, euclid_name.replace('_',' ').upper(), self,
-                                          legend=False,subplot=spec[1,0],fig=fig)
-            else:
-                print('Check tells me to NOT download Euclid image')
-                plotting_functions.plotCutout(euclid_file, euclid_name.replace('_',' ').upper(), self,
-                                          legend=False,subplot=spec[1,0],fig=fig)
+                                              legend=False,subplot=spec[1,0],fig=fig)
+                    break
             
             #this cutout radius is in deg
             des_file_path = plotting_functions.saveDESCutout(self.ra, self.dec, radius = 0.1)

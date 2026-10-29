@@ -20,18 +20,21 @@ def normalize_array(y_array, x_array):
 def check_if_query(path, preload):
     '''
     preload = True means that I want to use the preloaded / saved data instead of querying again
+    returns True if you should query again
+    returns False if you should not requery again
     '''
-    if not os.path.exists(path):
-        #merged data file doesn't exist yet
+    if preload==False:
+        # you don't want to use saved data, so automatically true to requery
         return True
     else:
-        #merged data file DOES exist
-        if preload == True:
-            #I want to use the saved data, so don't remerge them
-            return False
-        else:
-            #I want to overwrite it for whatever reason, so remerge/save them
+        # use saved data if it exists
+        if not os.path.exists(path):
+            #merged data file doesn't exist yet, so have to query
             return True
+        else:
+            # want to preload and data exists, so don't query
+            return False
+    
 
 def columns_to_query(COLS, bands, output_type='list'):
     INCOLS = []

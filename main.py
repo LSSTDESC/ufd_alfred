@@ -194,7 +194,9 @@ for pair in overlaps:
     more_sig = pair[0] #because in the pair, i always comes first. i < j and this list is sorted by significance
     less_sig = pair[1]
     if more_sig.sig==less_sig.sig: #I don't know what to do if they have the same significance yet, this should save both
-        more_sig.distances.append(less_sig.distance)
+        more_sig.samesig_duplicates.append({'distance' : less_sig.distance, 'r' : less_sig.r,
+                                            'ra' : less_sig.ra,  'dec' : less_sig.dec, 
+                                            'iso' : less_sig.iso})
     try:
         del Peaks[Peaks.index(less_sig)] #this (hopefully) works because they're all different objects 
                                 #therefore none are exactly alike and they won't be deleted 2x
@@ -217,25 +219,26 @@ plt.close()
 
 final_Peaks = []
 for Peak in Peaks:
-    print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distances} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
+    print(f'{Peak.sig} sigma; (RA, Dec, d) = ({Peak.ra} deg, {Peak.dec} deg, {Peak.distance} kpc); r = {Peak.r} deg; mu = {Peak.distance_modulus} mag')
+    print(Peak.samesig_duplicates)
     
     stars_within_radius = Peak.stars_within_the_radius(scale=1.2, set_attr = True)
     iso_background_stars = Peak.stars_within_the_radius(starsData=Peak.iso_stars, r=0.1, set_attr = False)
     all_background_stars = Peak.stars_within_the_radius(starsData=stars, r=0.1, set_attr = False)
     Peak.diagnostic_plots(iso_background_stars, all_background_stars,
                           plots_dir, data_dir, 
-                          preload=True, save=True, cutouts=False)  
+                          preload=False, save=True, cutouts=True)  
     
     if len(stars_within_radius.data)<=1:
-        if type(stars_within_radius)==DataObjects.Data:
-            print('Has type Data')
-        elif type(stars_within_radius)==DataObjects.DESnEuclidData:
-            print('Has type DESnEuclidData')
+        #if type(stars_within_radius)==DataObjects.Data:
+        #    print('Has type Data')
+        #elif type(stars_within_radius)==DataObjects.DESnEuclidData:
+        #    print('Has type DESnEuclidData')
         print(' ')
         continue
     else:
-        if type(stars_within_radius)==DataObjects.DESnEuclidData:
-            print('Has type DESnEuclidData')
+        #if type(stars_within_radius)==DataObjects.DESnEuclidData:
+        #    print('Has type DESnEuclidData')
         final_Peaks.append(Peak)
         print(' ')
 #save all the peaks that are more than 1 star...
