@@ -123,6 +123,7 @@ datafile = 'ufd_alfred/external_data/merged/32_9043_lsst_dp2_euclid_q1_merged.pa
 #calling updated cmd plot
 cmddata = stars
 band1 = cmddata.g
+print(band1.mag, 'this is band1')
 band2 = cmddata.r 
 color_data = colorcolor_mask
 plotting_functions.color_magnitude(band1, band2, #mag defined in dataobjects file
@@ -136,7 +137,6 @@ plotting_functions.color_magnitude(band1, band2, #mag defined in dataobjects fil
 print(len(stars.data))
 #calling updated color color plot
 color_color=stars
-color_data=color_color.g, color_color.r, color_color.i, color_color.z
 bandlist = color_color.g, color_color.r, color_color.i, color_color.z
 plotting_functions.color_color(bandlist, None, 'Color Color', save = True)
 

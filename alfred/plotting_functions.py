@@ -606,14 +606,11 @@ def color_magnitude(band1, band2, #mag defined in dataobjects file
 
     Parameters
     ----------
-    band1_mag : array or column
-        Band magnitude to be plotted on y-axis
-    band1_str : string
-        Label of band1
-    band2_mag : array or column
-        Band magnitude to be subtracted for the x-axis
-    band2_str : string
-        Label of band2
+    band1 : tuple
+        First band with magnitude values and name of band 
+        (e.g., cmddata.g to plot g band)
+    band2 : tuple
+        Second band to be subtracted with magnitude values and name of band
     color_data : data column OR None
         If plot is to be scatterplot or contour, then should be data for the mapping
         If plot is to be histogram, then None
@@ -709,10 +706,10 @@ def color_color(band_list,
 
     Parameters
     ----------
-    band_list : list of tuples
-        1st entry of tuple is string labeling band
-        2nd entries are the band data
-    colors : data column OR None
+    band_list : Tuples
+        List of tuples of bands to be plotted 
+        (e.g., bandlist = color_color.g, color_color.r, color_color.i, color_color.z)
+    color_data : data column OR None
         If plot is to be scatterplot or contour, then should be data for the mapping
         If plot is to be histogram, then None
     title : str
@@ -810,7 +807,7 @@ def color_color(band_list,
 #~~~~~~~~~~START STAR-GAL MORPHOLOGY FUNCTION ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def star_gal_sep(xax, yax_sep, #y_label,
                  color_data, title, 
-                 colors = 'viridis_r', #x_label = 'LSST i mag', 
+                 colors = 'viridis_r', 
                  selection_label = '_nolegend', color_label = None,
                  histogram = False, ax = None, line_plt = None,
                  colorbar_limits = (0,1), y_lim = None, x_lim = (18,28),
@@ -821,9 +818,9 @@ def star_gal_sep(xax, yax_sep, #y_label,
 
     Parameters
     ----------
-    xax_mag : array or column
-        Data for the x-axis, typically an i magnitude
-        Assumed to be LSST i mag; if not, change x_label
+    xax : tuple
+        Band tuple with magnitude values and band name string for the x axis
+        (e.g., xax = sepData.i)
     yax_sep : array or column
         Data for the y-axis, some morphology measurement
     y_label : string
@@ -835,8 +832,6 @@ def star_gal_sep(xax, yax_sep, #y_label,
         Plot title
     colors (optional) : str, default 'viridis_r'
         Color scheme to use
-    x_label : str, default 'LSST i mag'
-        Descriptor to label x-axis
     selection_label (optional) : str, default '_nolegend'
         Description of how the data was cut to be displayed in legend
         If kept _nolegend, won't display a legend
@@ -888,7 +883,7 @@ def star_gal_sep(xax, yax_sep, #y_label,
                                c = color_data, vmin=colorbar_limits[0], vmax=colorbar_limits[1],
                                label = selection_label,
                                s = size, cmap = colors)
-                sns.kdeplot(x=xax_mag, y=yax_sep, fill=False, color="k")
+                sns.kdeplot(x=xax.mag, y=yax_sep, fill=False, color="k")
         # normal scatter plot
         else:
             _ = ax.scatter(xax.mag, yax_sep,
